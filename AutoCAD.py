@@ -9,12 +9,27 @@ acad = win32com.client.Dispatch("AutoCAD.Application")
 class Sheet:
     def __init__(self):
         self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 'Block X', 'Block Y'])
+        self.LinesDF = pd.DataFrame(columns=['ID', 'Block Description', 'Start X', 'Start Y', 'End X', 'End Y'])
+    
+    def findBlocks(self):
+        for i, entity in enumerate(acad.ActiveDocument.Modelspace):
+            print(i)
+            if entity.ObjectName == 'AcDbLine':
+            # and entity.Layer == 'C-PR-WATER':
+                l = Line(entity)
+                self.LinesDF.loc[len(self.LinesDF.index)] = \
+                    [entity.ObjectID, entity.Layer, l.startX, 
+                     l.startY, l.endX, l.endY]
+            if entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
+                self.getFittingsProps(entity)
 
     def findLines(self):
         for entity in acad.ActiveDocument.Modelspace:
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 l = Line(entity)
-                print (l.getStart(), l.getEnd())
+                self.LinesDF.loc[len(self.LineDF.index)] = \
+                    [entity.ObjectID, entity.Layer, l.startX, 
+                     l.startY, l.endX, l.endY]
 
 
     def findFittings(self):
@@ -37,9 +52,11 @@ class Sheet:
     
     def saveDF(self):
         self.FittingsDF.to_csv('FittingsCSV')
+        self.LinesDF.to_csv('LinesCSV')
 
 sheet = Sheet()
-sheet.findFittings()
+sheet.findBlocks()
+# sheet.findFittings()
 sheet.saveDF()
 # sheet.findLines()
 
