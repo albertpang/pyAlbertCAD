@@ -1,20 +1,21 @@
 import pandas as pd
 
 class Fitting:
-    def __init__(self, block, DF):
-        FittingID = block.ObjectID
-        FittingsX = block.insertionPoint[0]
-        FittingsY = block.insertionPoint[1]
+    def __init__(self, block):
+        self.FittingID = block.ObjectID
+        self.FittingsX = block.insertionPoint[0]
+        self.FittingsY = block.insertionPoint[1]
         blockDynamicProperties = block.GetDynamicBlockProperties()
         for prop in blockDynamicProperties:
             if prop.PropertyName == 'Visibility1':
-                dynamicBlockName = prop.Value
+                self.dynamicBlockName = prop.Value
 
-        self.DF = DF
-        self.DF.loc[len(self.DF.index)] = [FittingID, dynamicBlockName, FittingsX, FittingsY]
+    def appendToDF(self, DF):
+        DF.loc[len(DF.index)] = [self.FittingID, self.dynamicBlockName, 
+                                           self.FittingsX, self.FittingsY]
 
-    def saveDF(self):
-        self.DF.to_csv('FittingsCSV')
+    def saveDF(self, DF):
+        DF.to_csv('FittingsCSV')
     
     def isCollinear(self):
         pass

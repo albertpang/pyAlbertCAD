@@ -10,7 +10,6 @@ acad = win32com.client.Dispatch("AutoCAD.Application")
 # and if its a BlockReference, display its attributes.
 class Sheet:
     def __init__(self):
-        self.fileName = 
         self.LinesDF = pd.DataFrame(columns=['ID', 'Block Description', 'Start X', 
                                             'Start Y', 'End X', 'End Y'])
         self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 
@@ -18,15 +17,17 @@ class Sheet:
         
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
-            print(i, entity)
+            print(i, entity.ObjectName)
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
-                l = Line(entity , self.LinesDF)
+                l = Line(entity)
+                l.appendToDF(self.LinesDF)
                                                             
             if entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
-                f = Fitting(entity, self.FittingsDF)
+                f = Fitting(entity)
+                f.appendToDF(self.FittingsDF)
 
-        l.saveDF()
-        f.saveDF()
+        l.saveDF(self.LinesDF)
+        f.saveDF(self.FittingsDF)
     
 sheet = Sheet()
 sheet.findBlocks()
