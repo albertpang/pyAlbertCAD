@@ -1,0 +1,91 @@
+Transmittal Report:
+Created by AutoCAD eTransmit Tuesday, July 19, 2022, 10:39 AM.
+
+Drawing:
+This is a transmittal based on W-20642-D_PR.dwg.
+
+Files:
+
+Root Drawing:
+	W-20642-D_PR.dwg
+
+AutoCAD Drawing (External) References:
+	W-20642-D_EX.dwg
+	W-20642-D_Title_Block_XREF (Water).dwg
+
+JPG File References:
+	Textures\Concrete.Cast-In-Place.Exposed Aggregate.Coarse.jpg
+	Textures\Concrete.Cast-In-Place.Flat.Grey.1.jpg
+	Textures\Sitework.Planting.Grass.Short.jpg
+	Textures\Sitework.Planting.Grass.Thick.jpg
+	Textures\Sitework.Planting.Gravel.Crushed.jpg
+	Textures\Sitework.Planting.Gravel.Mixed.jpg
+	Textures\Sitework.Planting.Sand.jpg
+	Textures\Sitework.Planting.Soil.jpg
+
+AutoCAD Plot Style Table File References:
+	PlotCfgs\Pwd hunt-survey.stb
+
+AutoCAD Plotter Configuration File References:
+	PlotCfgs\DWG To PDF.pc3
+
+The following files were excluded from the transmittal:
+	acad.fmp
+	Fonts\simplex.shx
+	Fonts\HECShapes.shx
+	Fonts\BOLD.SHX
+	Fonts\arialbd.ttf
+	Fonts\HECShapes_ST.shx
+	Fonts\HECShapes2.shx
+	Fonts\ROMANS.shx
+	Fonts\calibri.ttf
+	Fonts\HECShapes_LOW.shx
+	Fonts\HECShapes_NPDES.shx
+	Fonts\HECShapes_OSF.shx
+	Fonts\HECShapes_CFS12.shx
+	Fonts\HECShapes_CFS18.shx
+	Fonts\HECShapes_RR BoxTie.shx
+	Fonts\HECShapes_GEO.shx
+	Fonts\HECShapes_CFS8.shx
+	Fonts\HECShapes_CFS24.shx
+	Fonts\GRASS.shx
+	Fonts\RAIL.shx
+	Fonts\ltypeshp.shx
+	Fonts\txt.shx
+	Fonts\Cable.shx
+	Fonts\italic.shx
+	Fonts\arial.ttf
+
+The following files could not be located:
+	MONOPLEX.(shx,ttf)
+	ic-simp.(shx,ttf)
+	SMART.(shx,ttf)
+
+
+Notes for distribution:
+
+.DWG external reference files:
+External reference (xref) paths may be present.  Make sure these paths work or that the root drawing is using the correct references.
+eTransmit does not include files required by xrefs unless they are also required by the root drawing.  In particular, plot style tables and overlay xrefs that are not used by the root drawing are omitted
+
+.PC3 printer configuration files:
+Please copy these files to the AutoCAD Printer Configuration Search Path directory.
+
+.CTB/.STB plot style tables:
+Please copy these files to the AutoCAD Plot Style Table Search Path directory.
+
+Material texture files:
+Please copy these files to the AutoCAD Texture Maps Search Path directory.
+
+The AutoCAD variable FONTALT was set to:
+C:\Users\jbertolini\appdata\roaming\autodesk\c3d 2018\enu\support\simplex.shx
+Please make sure that the FONTALT variable is set to this file or an equivalent before opening any drawings.  All text styles with missing fonts are automatically set to this font.
+
+
+
+*** Map 2007 Data and Cache files ***
+
+The drawing 'N:\Projects\2019\2192025-PWD W-20642-D\dwg\ci\W-20642-D_PR.dwg' refers to a cache manifest XML file, zero or more cache files (.GWS) as well as raw data files.
+Please ensure the manifest XML file and cache files are unzipped to the drawing directory or your current MapCache directory.
+You may also need to update the cache manifest XML file to point to the unzipped location of the data files.
+

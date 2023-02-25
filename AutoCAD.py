@@ -8,7 +8,7 @@ acad = win32com.client.Dispatch("AutoCAD.Application")
 # and if its a BlockReference, display its attributes.
 class Sheet:
     def __init__(self):
-        self.FittingsDF = pd.DataFrame(columns=['Block Description', 'Block X', 'Block Y'])
+        self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 'Block X', 'Block Y'])
 
     def findLines(self):
         for entity in acad.ActiveDocument.Modelspace:
@@ -26,13 +26,14 @@ class Sheet:
         
 
     def getFittingsProps(self, block):
+        FittingID = block.ObjectID
         FittingsX = block.insertionPoint[0]
         FittingsY = block.insertionPoint[1]
         blockDynamicProperties = block.GetDynamicBlockProperties()
         for prop in blockDynamicProperties:
             if prop.PropertyName == 'Visibility1':
                 dynamicBlockName = prop.Value
-        self.FittingsDF.loc[len(self.FittingsDF.index)] = [dynamicBlockName, FittingsX, FittingsY]
+        self.FittingsDF.loc[len(self.FittingsDF.index)] = [FittingID, dynamicBlockName, FittingsX, FittingsY]
     
     def saveDF(self):
         self.FittingsDF.to_csv('FittingsCSV')
