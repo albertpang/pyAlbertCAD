@@ -1,6 +1,6 @@
 import win32com.client
 import numpy as np
-import pandas as pdt
+import pandas as pd
 acad = win32com.client.Dispatch("AutoCAD.Application")
 
 # iterate through all objects (entities) in the currently opened drawing
