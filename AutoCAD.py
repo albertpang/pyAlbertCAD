@@ -8,36 +8,24 @@ acad = win32com.client.Dispatch("AutoCAD.Application")
 # and if its a BlockReference, display its attributes.
 class Sheet:
     def __init__(self):
-        self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 'Block X', 'Block Y'])
-        self.LinesDF = pd.DataFrame(columns=['ID', 'Block Description', 'Start X', 'Start Y', 'End X', 'End Y'])
+        self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 
+                                                'Block X', 'Block Y'])
+        
+        self.LinesDF = pd.DataFrame(columns=['ID', 'Block Description', 'Start X', 
+                                             'Start Y', 'End X', 'End Y'])
     
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
-            print(i)
+            print(i, entity)
             if entity.ObjectName == 'AcDbLine':
             # and entity.Layer == 'C-PR-WATER':
                 l = Line(entity)
-                self.LinesDF.loc[len(self.LinesDF.index)] = \
-                    [entity.ObjectID, entity.Layer, l.startX, 
-                     l.startY, l.endX, l.endY]
+                self.LinesDF.loc[len(self.LinesDF.index)] = [l.ID, l.layer, l.startX,
+                                                            l.startY, l.endX, l.endY]
+                                                            
+                
             if entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
                 self.getFittingsProps(entity)
-
-    def findLines(self):
-        for entity in acad.ActiveDocument.Modelspace:
-            if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
-                l = Line(entity)
-                self.LinesDF.loc[len(self.LineDF.index)] = \
-                    [entity.ObjectID, entity.Layer, l.startX, 
-                     l.startY, l.endX, l.endY]
-
-
-    def findFittings(self):
-        for entity in acad.ActiveDocument.Modelspace:
-            name = entity.EntityName
-            if name == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
-                self.getFittingsProps(entity)
-        print(self.FittingsDF)
         
 
     def getFittingsProps(self, block):

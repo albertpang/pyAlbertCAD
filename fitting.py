@@ -1,7 +1,5 @@
-class Line:
+class Fitting:
     def __init__(self, block):
-        self.ID = block.ObjectID
-        self.layer = block.Layer
         self.startX = block.StartPoint[0]
         self.startY = block.StartPoint[1]
         self.endX = block.EndPoint[0]
