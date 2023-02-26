@@ -16,6 +16,7 @@ class Sheet:
         self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 
                                         'Block X', 'Block Y', 'Matching Line ID'])
         
+
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
@@ -28,8 +29,6 @@ class Sheet:
             
             if entity.ObjectName == 'AcDbMText':
                 print(entity.TextString)
-
-
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3):
@@ -54,10 +53,37 @@ class Sheet:
         self.FittingsDF.to_csv('FittingsCSV')
         print("logged to fittings")
 
+
+def findText(sheet):
+    entities = sheet.Block     
+    diSet = set() 
+    for i in range(entities.Count):
+        entity = entities.Item(i)
+        if entity.ObjectName == 'AcDbMText' and "IRON" in entity.TextString:
+            if sheet.Name == "W1":
+                if entity.TextString[10:] in diSet:
+                    print(entities.Item(i+1).textString, entity.TextString[10:])
+                else:
+                    diSet.add(entity.TextString[10:])
+            else:
+                print(entities.Item(i+1).textString, entity.TextString[10:])
+
+
+def findPaperSheets():
+    skipModelSpace = True
+    for sheet in acad.ActiveDocument.Layouts:
+        if skipModelSpace:
+            skipModelSpace = False
+            continue
+        print(sheet.Name)
+        findText(sheet)
+        
+
 sheet = Sheet()
-sheet.findBlocks()
-sheet.findFittingSize()
-sheet.saveDF()
+findPaperSheets()
+# sheet.findBlocks()
+# sheet.findFittingSize()
+# sheet.saveDF()
 
 # sheet.findFittings()
 # sheet.findLines()
