@@ -18,7 +18,6 @@ class Sheet:
         
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
-            print(i, entity.ObjectName)
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 l = Line(entity)
                 l.appendToDF(self.LinesDF)
@@ -26,6 +25,11 @@ class Sheet:
             if entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
                 f = Fitting(entity)
                 f.appendToDF(self.FittingsDF)
+            
+            if entity.ObjectName == 'AcDbMText':
+                print(entity.TextString)
+
+
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3):
