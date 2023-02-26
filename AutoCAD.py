@@ -81,9 +81,9 @@ def findPaperSheets():
 
 sheet = Sheet()
 findPaperSheets()
-# sheet.findBlocks()
-# sheet.findFittingSize()
-# sheet.saveDF()
+sheet.findBlocks()
+sheet.findFittingSize()
+sheet.saveDF()
 
 # sheet.findFittings()
 # sheet.findLines()
