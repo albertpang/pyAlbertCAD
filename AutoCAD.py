@@ -62,6 +62,8 @@ def findText(sheet):
         if entity.ObjectName == 'AcDbMText' and "IRON" in entity.TextString:
             if sheet.Name == "W1":
                 if entity.TextString[10:] in diSet:
+                    entity.TextString = "NEW TEXt"
+                    entity.Update()
                     print(entities.Item(i+1).textString, entity.TextString[10:])
                 else:
                     diSet.add(entity.TextString[10:])
