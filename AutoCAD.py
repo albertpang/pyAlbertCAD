@@ -2,8 +2,8 @@ import win32com.client
 import numpy as np
 import pandas as pd
 from line import Line
-
 from fitting import Fitting
+from text import Text
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 
@@ -15,10 +15,13 @@ class Sheet:
                                             'Start Y', 'End X', 'End Y', 'Slope'])
         self.FittingsDF = pd.DataFrame(columns=['ID', 'Block Description', 
                                         'Block X', 'Block Y', 'Matching Line ID'])
+        self.TextsDF = pd.DataFrame(columns=['ID', 'Text', 
+                                        'Block X', 'Block Y', 'Matching Line ID'])
         
 
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
+            # print (i, entity.ObjectName)
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 l = Line(entity)
                 l.appendToDF(self.LinesDF)
@@ -28,8 +31,13 @@ class Sheet:
                 f.appendToDF(self.FittingsDF)
             
             if entity.ObjectName == 'AcDbMText':
-                print(entity.TextString)
-
+                t = Text(entity)
+                t.appendToDF(self.TextsDF)
+            
+            if entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
+                print(entity.textString)
+                # m = Leader(entity)
+                # m.appendToDF(self.LeadersDF)
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3):
         return (x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3) == 0)
@@ -51,7 +59,9 @@ class Sheet:
         self.LinesDF.to_csv('LinesCSV')
         print("logged to Lines")
         self.FittingsDF.to_csv('FittingsCSV')
-        print("logged to fittings")
+        print("logged to Fittings")
+        self.TextsDF.to_csv('TextsCSV')
+        print("logged to Texts")
 
 
 def findText(sheet):
@@ -71,7 +81,7 @@ def findText(sheet):
 
 def findPaperSheets():
     skipModelSpace = True
-    for sheet in acad.ActiveDocument.Layouts:
+    for sheet in acad.activeDocument.Layouts:
         if skipModelSpace:
             skipModelSpace = False
             continue
@@ -80,10 +90,10 @@ def findPaperSheets():
         
 
 sheet = Sheet()
-findPaperSheets()
+# findPaperSheets()
 sheet.findBlocks()
-sheet.findFittingSize()
-sheet.saveDF()
+# sheet.findFittingSize()
+# sheet.saveDF()
 
 # sheet.findFittings()
 # sheet.findLines()

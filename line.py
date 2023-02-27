@@ -1,6 +1,7 @@
+from entity import Entity
 import pandas as pd
 
-class Line:
+class Line(Entity):
     def __init__(self, block):
         self.ID = block.ObjectID
         self.layer = block.Layer
@@ -12,15 +13,9 @@ class Line:
 
     def appendToDF(self, DF):
         DF.loc[len(DF.index)] = [self.ID, self.layer, self.startX,
-                                self.startY, self.endX, self.endY, self.slope]
+                                self.startY, self.endX, self.endY, 
+                                self.slope]
 
     def calculateSlope(self):
         slope = (self.endY - self.startY) / (self.endX - self.endY)
         return slope   
-
-    def saveDF(self, DF):
-        DF.to_csv('LinesCSV')
-
-
-    def isCollinear(self):
-        pass
