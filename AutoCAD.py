@@ -104,7 +104,8 @@ class Sheet:
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
     inModelSpace = True
-    for layout in acad.activeDocument.Layouts:
+
+    for layout in acad.activeDocument.layouts:
         print(layout.Name)
         if inModelSpace:
             s = Sheet(layout, linesDF, FittingsDF, TextsDF)
