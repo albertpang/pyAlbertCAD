@@ -23,6 +23,7 @@ class Sheet:
             if entity.objectName == 'AcDbZombieEntity':
                 entity.Erase()        
                 print("erased")
+                
 
     def findBlocks(self):
         entities = self.__layout.Block  
@@ -56,11 +57,12 @@ class Sheet:
             else:
                 pass
                 # print (entity.ObjectName)
-    def isCollinear(self, x1, y1, x2, y2, x3, y3):
+    def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
+    
         
-    def calculateDistance(self, x1, y1, x2, y2):
+    def calculateDistance(self, x1, y1, x2, y2) -> int:
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
 
 
@@ -76,8 +78,6 @@ class Sheet:
                 if self.isCollinear(x1, y1, x2, y2, x3, y3):
                     self.FittingsDF.loc[fittingIndex, 'Matching Line ID'] = self.LinesDF['ID'][lineIndex]
                     self.FittingsDF.loc[fittingIndex, 'Matching Line Length'] = self.LinesDF['Length'][lineIndex]
-                    
-                    # print("found", self.LinesDF['ID'][lineIndex])
     
     
     def findAssociatedText(self):
@@ -128,6 +128,7 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
             s.findBlocks()
     s.findAssociatedText()
     s.saveDF()
+
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
                                     'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
