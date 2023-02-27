@@ -106,20 +106,24 @@ class Sheet:
                 print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
 
     def findBillOfMaterials(self):
-        print("Finding Bill of Materials")
+        def format():
+            self.BillOfMaterialsDF['Associated Text String'] =            \
+                self.BillOfMaterialsDF['Associated Text String'].apply    \
+                (lambda x: re.sub(r'\\A1;|\\P', ',', x)).str.replace("\t", "-")
+            self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
+
+        print("\nFinding Bill of Materials")
         BillOfMaterialsFilter = self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
         self.BillOfMaterialsDF = self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
         self.BillOfMaterialsDF.sort_values("Sheet", key=lambda x: x.str[1:].astype(int), inplace = True)
-        self.BillOfMaterialsDF.sort_values("Sheet", key=lambda x: x.str[1:].astype(int), inplace = True)
-        self.BillOfMaterialsDF['Associated Text String'] = self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: re.sub(r'\\A1;', '', x))
-        self.BillOfMaterialsDF['Associated Text String'] = self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: re.sub(r'\\P', ', ', x))
-
+        format()
+        
         # Still thinking on best way to store Bill of Materials
         # BillOfMaterialsDict = dict(zip(self.BillOfMaterialsDF['Sheet'], self.BillOfMaterialsDF['Associated Text String']))
         # print(BillOfMaterialsDict)
         
     def saveDF(self):
-        print("SAVING CSVs")
+        print("Saving CSVs")
         self.LinesDF.to_csv('LinesCSV')
         print("-Logged to Lines")
         self.FittingsDF.to_csv('FittingsCSV')
