@@ -27,16 +27,16 @@ class Sheet:
     def findBlocks(self):
         entities = self.__layout.Block  
         for i in range(entities.Count):
-            if i == (entities.Count // 50):
-                print ("50% done")
+            if i == (entities.Count // 2):
+                print ("--- 50% done ---")
             entity = entities.Item(i)
 
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
-                l = Line(entity, self.__layout.name)
-                l.appendToDF(self.LinesDF)
+                if entity.Length > 1:
+                    l = Line(entity, self.__layout.name)
+                    l.appendToDF(self.LinesDF)
             # Polyline
-            elif entity.ObjectName == 'AcDbPolyline' and entity.Layer == 'C-PR-WATER':
-                print(entity.ObjectID, entity.Layer, len(entity.Coordinates)) 
+            elif entity.ObjectName == 'AcDbPolyline' and entity.Layer == 'C-PR-WATER': 
                 pl = PolyLine(entity, self.__layout.name, self.LinesDF)
             # Dynamic Blocks                                               
             elif entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
@@ -54,9 +54,11 @@ class Sheet:
                 # m = Leader(entity)
                 # m.appendToDF(self.LeadersDF)
             else:
-                print (entity.ObjectName)
+                pass
+                # print (entity.ObjectName)
     def isCollinear(self, x1, y1, x2, y2, x3, y3):
-        return (x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3) == 0)
+        collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
+        return (abs(collinearity) < 0.005)
         
     def calculateDistance(self, x1, y1, x2, y2):
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
@@ -64,6 +66,7 @@ class Sheet:
 
     def findFittingSize(self):
         '''Associate all fittings with a Line ID based on collinearity'''
+        print("Associating Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
         for fittingIndex in self.FittingsDF.index:
             x2, y2 = self.FittingsDF['Block X'][fittingIndex], self.FittingsDF['Block Y'][fittingIndex]
@@ -72,12 +75,15 @@ class Sheet:
                 x3, y3 = self.LinesDF['End X'][lineIndex], self.LinesDF['End Y'][lineIndex]
                 if self.isCollinear(x1, y1, x2, y2, x3, y3):
                     self.FittingsDF.loc[fittingIndex, 'Matching Line ID'] = self.LinesDF['ID'][lineIndex]
+                    self.FittingsDF.loc[fittingIndex, 'Matching Line Length'] = self.LinesDF['Length'][lineIndex]
+                    
                     # print("found", self.LinesDF['ID'][lineIndex])
     
     
     def findAssociatedText(self):
         # Currently O(n^2)
         '''TODO: Divide and Conquer Algorithm'''
+        print("Associating Texts by Distance")
         for textIndex in self.TextsDF.index:
             minDistance = 999
             minIndex = 0
@@ -98,12 +104,13 @@ class Sheet:
             
     
     def saveDF(self):
+        print("SAVING CSVs")
         self.LinesDF.to_csv('LinesCSV')
-        print("logged to Lines")
+        print("-Logged to Lines")
         self.FittingsDF.to_csv('FittingsCSV')
-        print("logged to Fittings")
+        print("--Logged to Fittings")
         self.TextsDF.to_csv('TextsCSV')
-        print("logged to Texts")
+        print("---Logged to Texts")
 
 
 
@@ -123,9 +130,10 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
     s.saveDF()
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
-                                    'Start Y', 'End X', 'End Y', 'Slope'])
+                                    'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
 FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 
-                                'Block X', 'Block Y', 'Matching Line ID'])
+                                'Block X', 'Block Y', 'Matching Line ID', 
+                                'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
 

@@ -6,15 +6,22 @@ class Line(Entity):
         self.ID = block.ObjectID
         self.sheet = layout
         self.layer = block.Layer
-        self.startX = round(block.StartPoint[0], 2)
-        self.startY = round(block.StartPoint[1], 2)
-        self.endX = round(block.EndPoint[0], 2)
-        self.endY = round(block.EndPoint[1], 2)
+        self.length = block.length
+        self.startX = block.StartPoint[0]
+        self.startY = block.StartPoint[1]
+        self.endX = block.EndPoint[0]
+        self.endY = block.EndPoint[1]
         self.slope = self.calculateSlope()
 
     def appendToDF(self, DF):
         DF.loc[len(DF.index)] = [self.ID, self.sheet, self.layer, self.startX,
-                                self.startY, self.endX, self.endY, self.slope]
+                                self.startY, self.endX, self.endY, self.length,
+                                self.slope]
+
+    def calculateLength(self):
+        length = ((self.startX - self.endX) **2 + (self.startY - self.endY) **2) ** 0.5
+        return round(length, 2)
+
 
     def calculateSlope(self):
         slope = (self.endY - self.startY) / (self.endX - self.endY)
@@ -38,13 +45,12 @@ class PolyLine(Line):
             self.endY = self.block.Coordinates[i + 3]
             self.appendToDF()
             i += 2
-            print (i)
 
 
     def appendToDF(self):
         self.lineDF.loc[len(self.lineDF.index)] = [f"Polyline - {self.block.ObjectId}", 
                                                     self.sheet, self.layer, 
                                                     self.startX, self.startY, 
-                                                    self.endX, self.endY, 
-                                                    "N/A"]    
+                                                    self.endX, self.endY, self.calculateLength(),
+                                                    self.calculateSlope()]    
         

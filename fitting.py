@@ -11,4 +11,4 @@ class Fitting(Entity):
 
     def appendToDF(self, DF):
         DF.loc[len(DF.index)] = [self.ID, self.sheet, self.dynamicBlockName, 
-                                self.locationX, self.locationY, "N/A"]
+                                self.locationX, self.locationY, "N/A", "N/A"]
