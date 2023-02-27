@@ -17,11 +17,16 @@ class Sheet:
                                         'Block X', 'Block Y', 'Matching Line ID'])
         self.TextsDF = pd.DataFrame(columns=['ID', 'Text', 
                                         'Block X', 'Block Y', 'Matching Line ID'])
-        
+    
+    def purgeZombieEntity(self):
+        for entity in acad.ActiveDocument.ModelSpace:
+            if entity.objectName == 'AcDbZombieEntity':
+                entity.Erase()        
+                print("erased")
 
     def findBlocks(self):
         for i, entity in enumerate(acad.ActiveDocument.Modelspace):
-            # print (i, entity.ObjectName)
+            print (i, entity.ObjectName)
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 l = Line(entity)
                 l.appendToDF(self.LinesDF)
@@ -36,6 +41,8 @@ class Sheet:
             
             if entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
                 print(entity.textString)
+                print(entity.DoglegLength)
+                print(entity.GetLeaderLineVertices(0))
                 # m = Leader(entity)
                 # m.appendToDF(self.LeadersDF)
 
@@ -90,6 +97,7 @@ def findPaperSheets():
         
 
 sheet = Sheet()
+# sheet.purgeZombieEntity()
 # findPaperSheets()
 sheet.findBlocks()
 # sheet.findFittingSize()
