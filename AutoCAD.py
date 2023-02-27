@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 # Importing Class Objects
-from line import Line
+from line import Line, PolyLine
 from fitting import Fitting
 from text import Text
 
@@ -34,23 +34,27 @@ class Sheet:
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 l = Line(entity, self.__layout.name)
                 l.appendToDF(self.LinesDF)
-                                                            
-            if entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
+            # Polyline
+            elif entity.ObjectName == 'AcDbPolyline' and entity.Layer == 'C-PR-WATER':
+                print(entity.ObjectID, entity.Layer, len(entity.Coordinates)) 
+                pl = PolyLine(entity, self.__layout.name, self.LinesDF)
+            # Dynamic Blocks                                               
+            elif entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
                 f = Fitting(entity, self.__layout.name)
                 f.appendToDF(self.FittingsDF)
-            
-            if entity.ObjectName == 'AcDbMText':
+            # Text Items
+            elif entity.ObjectName == 'AcDbMText'or entity.ObjectName == 'AcDbText':
                 t = Text(entity, self.__layout.name)
-                t.appendToDF(self.TextsDF)
-            
-            if entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
+                t.appendToDF(self.TextsDF)          
+            elif entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
                 pass
                 # print(entity.textString)
                 # print(entity.DoglegLength)
                 # print(entity.GetLeaderLineVertices(0))
                 # m = Leader(entity)
                 # m.appendToDF(self.LeadersDF)
-
+            else:
+                print (entity.ObjectName)
     def isCollinear(self, x1, y1, x2, y2, x3, y3):
         return (x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3) == 0)
         
@@ -59,6 +63,7 @@ class Sheet:
 
 
     def findFittingSize(self):
+        '''Associate all fittings with a Line ID based on collinearity'''
         fittingIndex, lineIndex = 0, 0
         for fittingIndex in self.FittingsDF.index:
             x2, y2 = self.FittingsDF['Block X'][fittingIndex], self.FittingsDF['Block Y'][fittingIndex]
@@ -104,7 +109,6 @@ class Sheet:
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
     inModelSpace = True
-
     for layout in acad.activeDocument.layouts:
         print(layout.Name)
         if inModelSpace:
@@ -115,17 +119,15 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
         else:
             s = Sheet(layout, linesDF, FittingsDF, TextsDF)
             s.findBlocks()
-    
     s.findAssociatedText()
     s.saveDF()
-        # findText(sheet)
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
                                     'Start Y', 'End X', 'End Y', 'Slope'])
 FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 
                                 'Block X', 'Block Y', 'Matching Line ID'])
-TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 
-                                'Block X', 'Block Y', 'Associated Text ID', 'Associated Text String'])        
+TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
+                                'Associated Text ID', 'Associated Text String'])        
 
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
 # sheet.purgeZombieEntity()
