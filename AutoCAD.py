@@ -1,6 +1,7 @@
 import win32com.client
 import numpy as np
 import pandas as pd
+import time
 import re
 
 # Importing Class Objects
@@ -18,21 +19,17 @@ class Sheet:
         self.LinesDF = linesDF
         self.FittingsDF = FittingsDF
         self.TextsDF = TextsDF
-    
-    def purgeZombieEntity(self):
-        for entity in acad.ActiveDocument.ModelSpace:
-            if entity.objectName == 'AcDbZombieEntity':
-                entity.Erase()        
-                print("erased")
 
 
     def findBlocks(self):
         entities = self.__layout.Block  
         for i in range(entities.Count):
+            # time.sleep(0.5)
+            entity = entities.Item(i)
+            # time.sleep(0.2)
+            print(i)
             if i == (entities.Count // 2):
                 print ("--- 50% done ---")
-            entity = entities.Item(i)
-
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
                 if entity.Length > 1:
                     l = Line(entity, self.__layout.name)
@@ -45,18 +42,21 @@ class Sheet:
                 f = Fitting(entity, self.__layout.name)
                 f.appendToDF(self.FittingsDF)
             # Text Items
-            elif entity.ObjectName == 'AcDbMText'or entity.ObjectName == 'AcDbText':
+            elif entity.ObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
                 t = Text(entity, self.__layout.name)
                 t.appendToDF(self.TextsDF)          
             elif entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
                 pass
+            elif entity.ObjectName == 'AcDbZombieEntity':
+                entity.Erase()
+                print(i, "erased")
                 # print(entity.textString)
                 # print(entity.DoglegLength)
                 # print(entity.GetLeaderLineVertices(0))
                 # m = Leader(entity)
                 # m.appendToDF(self.LeadersDF)
             else:
-                pass
+                continue
                 # print (entity.ObjectName)
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
@@ -133,15 +133,31 @@ class Sheet:
         self.BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
         print("----Logged to BOM")
 
+    
+def purgeZombieEntity():
+    i = 0
+    for entity in acad.ActiveDocument.ModelSpace:
+        i += 1
+        print(entity.EntityName)
+        if entity.ObjectName == 'AcDbZombieEntity':
+            entity.Delete
+            time.sleep(0.2)
+            print(i, "erased")
+    print("finished")
+        # 
+            
+
+
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
+    # purgeZombieEntity()
     inModelSpace = True
     for layout in acad.activeDocument.layouts:
         print(layout.Name)
         if inModelSpace:
-            # s = Sheet(layout, linesDF, FittingsDF, TextsDF)
-            # s.findBlocks()
-            # s.findFittingSize()
+            s = Sheet(layout, linesDF, FittingsDF, TextsDF)
+            s.findBlocks()
+            s.findFittingSize()
             inModelSpace = False
             continue
         else:
@@ -160,6 +176,7 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
+
 
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
 # sheet.purgeZombieEntity()
