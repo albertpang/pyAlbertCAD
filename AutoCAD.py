@@ -23,7 +23,7 @@ class Sheet:
             if entity.objectName == 'AcDbZombieEntity':
                 entity.Erase()        
                 print("erased")
-                
+
 
     def findBlocks(self):
         entities = self.__layout.Block  
@@ -84,24 +84,47 @@ class Sheet:
         # Currently O(n^2)
         '''TODO: Divide and Conquer Algorithm'''
         print("Associating Texts by Distance")
-        for textIndex in self.TextsDF.index:
-            minDistance = 999
-            minIndex = 0
-            x1, y1 = self.TextsDF['Block X'][textIndex], self.TextsDF['Block Y'][textIndex]
-            for relativeTextIndex in self.TextsDF.index:
-                if relativeTextIndex != textIndex:
-                    x2, y2  = self.TextsDF['Block X'][relativeTextIndex], self.TextsDF['Block Y'][relativeTextIndex]
-                    distance = self.calculateDistance(x1, y1, x2, y2)
-                    if distance < minDistance:
-                        minDistance = distance
-                        minIndex = relativeTextIndex
-            self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF['ID'][minIndex]
-            self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF['Text'][minIndex]
+        # for textIndex in self.TextsDF.index:
+        #     minDistance = 999
+        #     minIndex = 0
+        #     x1, y1 = self.TextsDF['Block X'][textIndex], self.TextsDF['Block Y'][textIndex]
+        #     for relativeTextIndex in self.TextsDF.index:
+        #         if relativeTextIndex != textIndex:
+        #             x2, y2  = self.TextsDF['Block X'][relativeTextIndex], self.TextsDF['Block Y'][relativeTextIndex]
+        #             distance = self.calculateDistance(x1, y1, x2, y2)
+        #             if distance < minDistance:
+        #                 minDistance = distance
+        #                 minIndex = relativeTextIndex
+        #     self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF['ID'][minIndex]
+        #     self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF['Text'][minIndex]
             
+        # for textIndex in self.TextsDF.index:
+        #     if "DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and "'" in self.TextsDF.loc[textIndex, 'Text'] :
+        #         print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
+        
+        for sheet_name, group in self.TextsDF.groupby('Sheet'):
+            # Iterate over rows within the current sheet group
+            for textIndex in group.index:
+                minDistance = 999
+                minIndex = 0
+                x1, y1 = group.loc[textIndex, 'Block X'], group.loc[textIndex, 'Block Y']
+                for relativeTextIndex in group.index:
+                    if relativeTextIndex != textIndex:
+                        x2, y2 = group.loc[relativeTextIndex, 'Block X'], group.loc[relativeTextIndex, 'Block Y']
+                        distance = self.calculateDistance(x1, y1, x2, y2)
+                        if distance < minDistance:
+                            minDistance = distance
+                            minIndex = relativeTextIndex
+                self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF.loc[minIndex, 'ID']
+                self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF.loc[minIndex, 'Text']
+
         for textIndex in self.TextsDF.index:
             if "DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and "'" in self.TextsDF.loc[textIndex, 'Text'] :
                 print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
-            
+
+    def findBillOfMaterials(self):
+        BillOfMaterialsFilter = (self.TextsDF['Text'].str.contains('BILL OF MATERIALS'))
+        self.BillOfMaterialsDF = (self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']])
     
     def saveDF(self):
         print("SAVING CSVs")
@@ -111,7 +134,8 @@ class Sheet:
         print("--Logged to Fittings")
         self.TextsDF.to_csv('TextsCSV')
         print("---Logged to Texts")
-
+        self.BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
+        print("----Logged to BOM")
 
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
@@ -123,10 +147,13 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
             s.findBlocks()
             s.findFittingSize()
             inModelSpace = False
+            continue
         else:
             s = Sheet(layout, linesDF, FittingsDF, TextsDF)
             s.findBlocks()
+
     s.findAssociatedText()
+    s.findBillOfMaterials()
     s.saveDF()
 
 
