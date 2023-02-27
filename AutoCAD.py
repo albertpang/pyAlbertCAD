@@ -1,6 +1,7 @@
 import win32com.client
 import numpy as np
 import pandas as pd
+import re
 
 # Importing Class Objects
 from line import Line, PolyLine
@@ -68,7 +69,7 @@ class Sheet:
 
     def findFittingSize(self):
         '''Associate all fittings with a Line ID based on collinearity'''
-        print("Associating Fittings to Lines")
+        print("Associating ModelSpace Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
         for fittingIndex in self.FittingsDF.index:
             x2, y2 = self.FittingsDF['Block X'][fittingIndex], self.FittingsDF['Block Y'][fittingIndex]
@@ -83,25 +84,7 @@ class Sheet:
     def findAssociatedText(self):
         # Currently O(n^2)
         '''TODO: Divide and Conquer Algorithm'''
-        print("Associating Texts by Distance")
-        # for textIndex in self.TextsDF.index:
-        #     minDistance = 999
-        #     minIndex = 0
-        #     x1, y1 = self.TextsDF['Block X'][textIndex], self.TextsDF['Block Y'][textIndex]
-        #     for relativeTextIndex in self.TextsDF.index:
-        #         if relativeTextIndex != textIndex:
-        #             x2, y2  = self.TextsDF['Block X'][relativeTextIndex], self.TextsDF['Block Y'][relativeTextIndex]
-        #             distance = self.calculateDistance(x1, y1, x2, y2)
-        #             if distance < minDistance:
-        #                 minDistance = distance
-        #                 minIndex = relativeTextIndex
-        #     self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF['ID'][minIndex]
-        #     self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF['Text'][minIndex]
-            
-        # for textIndex in self.TextsDF.index:
-        #     if "DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and "'" in self.TextsDF.loc[textIndex, 'Text'] :
-        #         print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
-        
+        print("Associating Texts by Distance")        
         for sheet_name, group in self.TextsDF.groupby('Sheet'):
             # Iterate over rows within the current sheet group
             for textIndex in group.index:
@@ -123,9 +106,18 @@ class Sheet:
                 print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
 
     def findBillOfMaterials(self):
-        BillOfMaterialsFilter = (self.TextsDF['Text'].str.contains('BILL OF MATERIALS'))
-        self.BillOfMaterialsDF = (self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']])
-    
+        print("Finding Bill of Materials")
+        BillOfMaterialsFilter = self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
+        self.BillOfMaterialsDF = self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
+        self.BillOfMaterialsDF.sort_values("Sheet", key=lambda x: x.str[1:].astype(int), inplace = True)
+        self.BillOfMaterialsDF.sort_values("Sheet", key=lambda x: x.str[1:].astype(int), inplace = True)
+        self.BillOfMaterialsDF['Associated Text String'] = self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: re.sub(r'\\A1;', '', x))
+        self.BillOfMaterialsDF['Associated Text String'] = self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: re.sub(r'\\P', ', ', x))
+
+        # Still thinking on best way to store Bill of Materials
+        # BillOfMaterialsDict = dict(zip(self.BillOfMaterialsDF['Sheet'], self.BillOfMaterialsDF['Associated Text String']))
+        # print(BillOfMaterialsDict)
+        
     def saveDF(self):
         print("SAVING CSVs")
         self.LinesDF.to_csv('LinesCSV')
@@ -143,9 +135,9 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
     for layout in acad.activeDocument.layouts:
         print(layout.Name)
         if inModelSpace:
-            s = Sheet(layout, linesDF, FittingsDF, TextsDF)
-            s.findBlocks()
-            s.findFittingSize()
+            # s = Sheet(layout, linesDF, FittingsDF, TextsDF)
+            # s.findBlocks()
+            # s.findFittingSize()
             inModelSpace = False
             continue
         else:
