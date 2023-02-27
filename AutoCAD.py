@@ -27,6 +27,8 @@ class Sheet:
     def findBlocks(self):
         entities = self.__layout.Block  
         for i in range(entities.Count):
+            if i == (entities.Count // 50):
+                print ("50% done")
             entity = entities.Item(i)
 
             if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
@@ -84,6 +86,10 @@ class Sheet:
                         minIndex = relativeTextIndex
             self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF['ID'][minIndex]
             self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF['Text'][minIndex]
+            
+        for textIndex in self.TextsDF.index:
+            if "DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and "'" in self.TextsDF.loc[textIndex, 'Text'] :
+                print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
             
     
     def saveDF(self):
