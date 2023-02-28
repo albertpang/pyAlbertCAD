@@ -25,10 +25,9 @@ class Sheet:
     def findBlocks(self):
         entities = self.__layout.Block  
         for i in range(entities.Count):
-            # time.sleep(0.5)
             entity = entities.Item(i)
             # time.sleep(0.2)
-            print(i)
+            # print(i)
             if i == (entities.Count // 2):
                 print ("--- 50% done ---")
                 try:
@@ -179,7 +178,9 @@ TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y',
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
-findPaperSheets(LinesDF, FittingsDF, TextsDF)
+
+for i in range(0, 5):
+    findPaperSheets(LinesDF, FittingsDF, TextsDF)
 # sheet.purgeZombieEntity()
 # sheet.findFittingSize()
 # sheet.saveDF()
