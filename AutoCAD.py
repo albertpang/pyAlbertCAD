@@ -14,11 +14,12 @@ acad = win32com.client.Dispatch("AutoCAD.Application")
 # iterate through all objects (entities) in the currently opened drawing
 # and if its a BlockReference, display its attributes.
 class Sheet:
-    def __init__(self, layout, linesDF, FittingsDF, TextsDF):
+    def __init__(self, layout, linesDF, FittingsDF, TextsDF, BoMDF):
         self.__layout = layout
         self.LinesDF = linesDF
         self.FittingsDF = FittingsDF
         self.TextsDF = TextsDF
+        self.BillOfMaterialsDF = BoMDF
 
 
     def findBlocks(self):
@@ -30,34 +31,42 @@ class Sheet:
             print(i)
             if i == (entities.Count // 2):
                 print ("--- 50% done ---")
-            if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
-                if entity.Length > 1:
-                    l = Line(entity, self.__layout.name)
-                    l.appendToDF(self.LinesDF)
-            # Polyline
-            elif entity.ObjectName == 'AcDbPolyline' and entity.Layer == 'C-PR-WATER': 
-                pl = PolyLine(entity, self.__layout.name, self.LinesDF)
-            # Dynamic Blocks                                               
-            elif entity.ObjectName == 'AcDbBlockReference' and entity.EffectiveName.startswith("WATER"):
-                f = Fitting(entity, self.__layout.name)
-                f.appendToDF(self.FittingsDF)
-            # Text Items
-            elif entity.ObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
-                t = Text(entity, self.__layout.name)
-                t.appendToDF(self.TextsDF)          
-            elif entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
-                pass
-            elif entity.ObjectName == 'AcDbZombieEntity':
-                entity.Erase()
-                print(i, "erased")
-                # print(entity.textString)
-                # print(entity.DoglegLength)
-                # print(entity.GetLeaderLineVertices(0))
-                # m = Leader(entity)
-                # m.appendToDF(self.LeadersDF)
-            else:
-                continue
-                # print (entity.ObjectName)
+                try:
+                    print(entity.ObjectName)
+                    if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
+                        if entity.Length > 1:
+                            l = Line(entity, self.__layout.name)
+                            l.appendToDF(self.LinesDF)
+                    # Polyline
+                    elif entity.ObjectName == 'AcDbPolyline':
+                    # and entity.Layer == 'C-PR-WATER': 
+                        pl = PolyLine(entity, self.__layout.name, self.LinesDF)
+                    # Dynamic Blocks                                               
+                    elif entity.ObjectName == 'AcDbBlockReference' and entity.Name.startswith("WATER"):
+                    # and entity.EffectiveName.startswith("WATER"):
+                        f = Fitting(entity, self.__layout.name)
+                        f.appendToDF(self.FittingsDF)
+                    # Text Items
+                    elif entity.ObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
+                        t = Text(entity, self.__layout.name)
+                        t.appendToDF(self.TextsDF)          
+                    elif entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
+                        pass
+                    elif entity.ObjectName == 'AcDbZombieEntity':
+                        entity.Erase()
+                        print(i, "erased")
+                        # print(entity.textString)
+                        # print(entity.DoglegLength)
+                        # print(entity.GetLeaderLineVertices(0))
+                        # m = Leader(entity)
+                        # m.appendToDF(self.LeadersDF)
+                    else:
+                        continue
+                    # print (entity.ObjectName)
+                except:
+                    continue
+
+
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
@@ -136,17 +145,9 @@ class Sheet:
     
 def purgeZombieEntity():
     i = 0
-    for entity in acad.ActiveDocument.ModelSpace:
-        i += 1
-        print(entity.EntityName)
-        if entity.ObjectName == 'AcDbZombieEntity':
-            entity.Delete
-            time.sleep(0.2)
-            print(i, "erased")
-    print("finished")
-        # 
-            
-
+    db = acad.ActiveDocument.Modelspace
+    for i in range(db.count):
+        print(db.Item(i).ObjectName)      
 
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
@@ -155,13 +156,13 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
     for layout in acad.activeDocument.layouts:
         print(layout.Name)
         if inModelSpace:
-            s = Sheet(layout, linesDF, FittingsDF, TextsDF)
+            s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
             s.findBlocks()
             s.findFittingSize()
             inModelSpace = False
             continue
         else:
-            s = Sheet(layout, linesDF, FittingsDF, TextsDF)
+            s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
             s.findBlocks()
 
     s.findAssociatedText()
@@ -176,7 +177,7 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
-
+BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
 # sheet.purgeZombieEntity()
