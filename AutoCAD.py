@@ -11,9 +11,29 @@ from text import Text
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 
-# iterate through all objects (entities) in the currently opened drawing
-# and if its a BlockReference, display its attributes.
 class Sheet:
+    """
+    Initialize the Sheet object with layout, lines data frame, 
+    fittings data frame, texts data frame, and bill of materials data frame.
+
+    Parameters:
+    -----------
+    layout : Layout
+        An AutoCAD Layout object representing the current drawing layout.
+
+    linesDF : pandas.DataFrame
+        A data frame containing information about lines in the current drawing.
+
+    FittingsDF : pandas.DataFrame
+        A data frame containing information about fittings in the current drawing.
+
+    TextsDF : pandas.DataFrame
+        A data frame containing information about texts in the current drawing.
+
+    BoMDF : pandas.DataFrame
+        A data frame containing information about bill of materials 
+        in the current drawing.
+    """
     def __init__(self, layout, linesDF, FittingsDF, TextsDF, BoMDF):
         self.__layout = layout
         self.LinesDF = linesDF
@@ -23,10 +43,19 @@ class Sheet:
 
 
     def findBlocks(self):
+        """
+        Finds all the blocks in the current drawing and classifies them as lines, 
+        polylines, dynamic blocks, texts or mleader objects. The information 
+        about these objects is then stored in respective data frames.
+
+        Raises:
+            Exception: If there is an error while iterating over the entities 
+            in the layout.
+        """
         entities = self.__layout.Block
         entitiesCount = entities.Count 
-        i = 0
-        while i < entitiesCount:
+        i, errorCount = 0, 1
+        while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
             try:
@@ -36,12 +65,16 @@ class Sheet:
                 # Line Object
                 if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
                     if entity.Length > 1:
-                        l = Line(entity, self.__layout.name)
+                        l = Line(entity, self.__layout.name, False)
                         l.appendToDF(self.LinesDF)
 
                 # Polyline
                 elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
                     if entity.Length > 1:
+                        # If there are only two coordinates, convert Polyline into a line
+                        if len(entity.Coordinates) == 4:
+                            l = Line(entity, self.__layout.name, True)
+                            l.appendToDF(self.LinesDF)
                         pl = PolyLine(entity, self.__layout.name, self.LinesDF)
 
                 # Dynamic Blocks
@@ -64,57 +97,126 @@ class Sheet:
                 i += 1
 
             except Exception as e:
-                print(i, entityObjectName, e)
+                errorCount += 1
+                print("HELLO HOE")
+                print(f"Attempt Count: {errorCount}", entityObjectName, e)
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
+        """
+        Checks if three points are collinear.
+
+        Parameters:
+            x1 (float): The x coordinate of the first point.
+            y1 (float): The y coordinate of the first point.
+            x2 (float): The x coordinate of the second point.
+            y2 (float): The y coordinate of the second point.
+            x3 (float): The x coordinate of the third point.
+            y3 (float): The y coordinate of the third point.
+
+        Returns:
+            bool: True if the points are collinear, False otherwise.
+        """
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
     
         
-    def calculateDistance(self, x1, y1, x2, y2) -> int:
+    def calculateDistance(self, x1, y1, x2, y2) -> float:
+        """Calculates the Euclidean distance between two points in a 2D space.
+
+        Parameters:
+            self: The Sheet object.
+            x1 (int): The X coordinate of the first point.
+            y1 (int): The Y coordinate of the first point.
+            x2 (int): The X coordinate of the second point.
+            y2 (int): The Y coordinate of the second point.
+
+        Returns:
+            int: The Euclidean distance between the two points.
+        """
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
 
 
     def findFittingSize(self):
-        '''Associate all fittings with a Line ID based on collinearity'''
+        """Associates all fittings with a Line ID based on collinearity.
+
+        Parameters:
+            self: The Sheet object.
+
+        Returns:
+            None
+        """
         print("Associating ModelSpace Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
         for fittingIndex in self.FittingsDF.index:
-            x2, y2 = self.FittingsDF['Block X'][fittingIndex], self.FittingsDF['Block Y'][fittingIndex]
+            x2 = self.FittingsDF['Block X'][fittingIndex]
+            y2 = self.FittingsDF['Block Y'][fittingIndex]
             for lineIndex in self.LinesDF.index:
-                x1, y1  = self.LinesDF['Start X'][lineIndex], self.LinesDF['Start Y'][lineIndex]
-                x3, y3 = self.LinesDF['End X'][lineIndex], self.LinesDF['End Y'][lineIndex]
+                x1 = self.LinesDF['Start X'][lineIndex]
+                y1 = self.LinesDF['Start Y'][lineIndex]
+                x3 = self.LinesDF['End X'][lineIndex]
+                y3 = self.LinesDF['End Y'][lineIndex]
                 if self.isCollinear(x1, y1, x2, y2, x3, y3):
-                    self.FittingsDF.loc[fittingIndex, 'Matching Line ID'] = self.LinesDF['ID'][lineIndex]
-                    self.FittingsDF.loc[fittingIndex, 'Matching Line Length'] = self.LinesDF['Length'][lineIndex]
+                    self.FittingsDF.loc[fittingIndex, 'Matching Line ID'] = \
+                        self.LinesDF['ID'][lineIndex]
+                    self.FittingsDF.loc[fittingIndex, 'Matching Line Length'] = \
+                        self.LinesDF['Length'][lineIndex]
     
     
     def findAssociatedText(self):
         # Currently O(n^2)
+        """Associates text blocks in a sheet with the nearest text block.
+
+        Parameters:
+            self: The Sheet object.
+
+        Returns:
+            None
+        """
         '''TODO: Divide and Conquer Algorithm'''
+
         print("Associating Texts by Distance")        
         for sheet_name, group in self.TextsDF.groupby('Sheet'):
             # Iterate over rows within the current sheet group
             for textIndex in group.index:
                 minDistance = 999
                 minIndex = 0
-                x1, y1 = group.loc[textIndex, 'Block X'], group.loc[textIndex, 'Block Y']
+                x1 = group.loc[textIndex, 'Block X']
+                y1 = group.loc[textIndex, 'Block Y']
                 for relativeTextIndex in group.index:
                     if relativeTextIndex != textIndex:
-                        x2, y2 = group.loc[relativeTextIndex, 'Block X'], group.loc[relativeTextIndex, 'Block Y']
+                        x2 = group.loc[relativeTextIndex, 'Block X']
+                        y2 =group.loc[relativeTextIndex, 'Block Y']
                         distance = self.calculateDistance(x1, y1, x2, y2)
                         if distance < minDistance:
                             minDistance = distance
                             minIndex = relativeTextIndex
-                self.TextsDF.loc[textIndex, 'Associated Text ID'] = self.TextsDF.loc[minIndex, 'ID']
-                self.TextsDF.loc[textIndex, 'Associated Text String'] = self.TextsDF.loc[minIndex, 'Text']
+                self.TextsDF.loc[textIndex, 'Associated Text ID'] = \
+                    self.TextsDF.loc[minIndex, 'ID']
+                self.TextsDF.loc[textIndex, 'Associated Text String'] = \
+                    self.TextsDF.loc[minIndex, 'Text']
 
         for textIndex in self.TextsDF.index:
-            if "DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and "'" in self.TextsDF.loc[textIndex, 'Text'] :
-                print(f"{self.TextsDF['Sheet'][textIndex]} : {self.TextsDF['Text'][textIndex]} of {self.TextsDF['Associated Text String'][textIndex]}")
+            if ("DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and 
+                "'" in self.TextsDF.loc[textIndex, 'Text']):
+                print(f"{self.TextsDF['Sheet'][textIndex]} : "
+                      f"{self.TextsDF['Text'][textIndex]} of "
+                      f"{self.TextsDF['Associated Text String'][textIndex]}")
 
-    def findBillOfMaterials(self):
+    def findBillOfMaterials(self):  
+        """Identify the bill of materials in the TextsDF DataFrame, extract the
+        relevant information, and store it in the BillOfMaterialsDF DataFrame.
+
+        The function applies a regular expression to identify the rows in the 
+        TextsDF DataFrame that contain the 'BILL OF MATERIALS' string. The relevant
+        columns are extracted and stored in the BillOfMaterialsDF DataFrame.
+        The sheet number is also extracted from the 'Sheet' column and used to
+        sort the rows in ascending order. The 'Associated Text String' column is
+        then cleaned up and split into a list of comma-separated values.
+
+        Returns:
+        None
+        """
         def format():
             self.BillOfMaterialsDF['Associated Text String'] =            \
                 self.BillOfMaterialsDF['Associated Text String'].apply    \
@@ -123,16 +225,28 @@ class Sheet:
             self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
 
         print("\nFinding Bill of Materials")
-        BillOfMaterialsFilter = self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
-        self.BillOfMaterialsDF = self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
-        self.BillOfMaterialsDF['Sheet #'] = self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
+        BillOfMaterialsFilter = \
+            self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
+        self.BillOfMaterialsDF = \
+            self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
+        self.BillOfMaterialsDF['Sheet #'] = \
+            self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
         self.BillOfMaterialsDF.sort_values("Sheet #", inplace=True)
         self.BillOfMaterialsDF.drop(["Sheet #"], axis = 1)
-        
         format()
 
         
     def saveDF(self):
+        """Save the DataFrame objects to CSV files.
+
+        The function saves each of the four DataFrame objects to a separate CSV file.
+        The file names are hardcoded as 'LinesCSV', 'FittingsCSV', 'TextsCSV', and
+        'BillOfMaterialsCSV', respectively. The function logs a message to the console
+        after each file is saved to indicate which DataFrame object was saved.
+
+        Returns:
+        None
+        """
         print("Saving CSVs")
         self.LinesDF.to_csv('LinesCSV')
         print("-Logged to Lines")
@@ -145,6 +259,18 @@ class Sheet:
 
     
 def purgeZombieEntity():
+    """ -- PROXY Errors due to WINCOM -- Obsolete Code -- """
+    """Delete any zombie AutoCAD entities from the Modelspace.
+
+    The function iterates over all the entities in the Modelspace of the active
+    AutoCAD document and prints their object names to the console. This is useful
+    for identifying any entities that may have been left behind by a program that
+    terminated unexpectedly or otherwise failed to clean up after itself. The 
+    function does not delete any entities.
+
+    Returns:
+    None
+    """
     i = 0
     db = acad.ActiveDocument.Modelspace
     for i in range(db.count):
@@ -194,12 +320,3 @@ TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y',
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
-
-
-
-        # Depending on Tool Palette used, there may be a unique method for creating blocks
-        # HasAttributes = entity.HasAttributes
-        # if HasAttributes:
-        #     for attrib in entity.GetAttributes():
-        #         print(attrib.TextString, attrib.TagString)
-
