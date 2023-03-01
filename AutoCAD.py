@@ -75,7 +75,9 @@ class Sheet:
                         if len(entity.Coordinates) == 4:
                             l = Line(entity, self.__layout.name, True)
                             l.appendToDF(self.LinesDF)
-                        pl = PolyLine(entity, self.__layout.name, self.LinesDF)
+                        # Otherwise, it is an authentic Polyline
+                        else:
+                            pl = PolyLine(entity, self.__layout.name, self.LinesDF)
 
                 # Dynamic Blocks
                 elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
@@ -83,7 +85,8 @@ class Sheet:
                     f.appendToDF(self.FittingsDF)
         
                 # Text Items
-                elif entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
+                elif (entityObjectName == 'AcDbMText' or 
+                      entity.ObjectName == 'AcDbText'):
                     t = Text(entity, self.__layout.name)
                     t.appendToDF(self.TextsDF)          
 
@@ -98,8 +101,7 @@ class Sheet:
 
             except Exception as e:
                 errorCount += 1
-                print("HELLO HOE")
-                print(f"Attempt Count: {errorCount}", entityObjectName, e)
+                print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -220,7 +222,13 @@ class Sheet:
         def format():
             self.BillOfMaterialsDF['Associated Text String'] =            \
                 self.BillOfMaterialsDF['Associated Text String'].apply    \
-                (lambda x: re.sub(r'\\A1;|\\P', ',', x)).str.replace("\t", "-")
+                (lambda x: re.sub(r'\\A1;', '', x))
+            self.BillOfMaterialsDF['Associated Text String'] =            \
+                self.BillOfMaterialsDF['Associated Text String'].apply    \
+                (lambda x: re.sub(r'\\P', ',', x)).str.replace("\t", "-")
+            self.BillOfMaterialsDF.drop(['Sheet #'], axis=1, inplace= True)
+            
+            
             
             self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
 
@@ -230,10 +238,22 @@ class Sheet:
         self.BillOfMaterialsDF = \
             self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
         self.BillOfMaterialsDF['Sheet #'] = \
-            self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
+            self.BillOfMaterialsDF['Sheet'].apply(lambda x: int(re.sub(r'\D', '', str(x))))
         self.BillOfMaterialsDF.sort_values("Sheet #", inplace=True)
-        self.BillOfMaterialsDF.drop(["Sheet #"], axis = 1)
         format()
+
+        fittingColumn = 'Associated Text String'
+        self.BillOfMaterialsDF['Fitting List'] = self.BillOfMaterialsDF[fittingColumn].str.split(',')
+        self.BillOfMaterialsDF = self.BillOfMaterialsDF.explode('Fitting List')
+        self.BillOfMaterialsDF['Quantity'] = self.BillOfMaterialsDF['Fitting List'].str.split('-').str[0]
+        self.BillOfMaterialsDF['Fitting'] = self.BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
+        self.BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
+
+        
+
+        # 
+        # self.BillOfMaterialsDF.assign(fittingColumn = 
+
 
         
     def saveDF(self):

@@ -34,7 +34,11 @@ class Line(Entity):
 
 
     def calculateSlope(self, x1, y1, x2, y2):
-        slope = (x1 - y1) / (x2 - y2)
+        if (x2 - x1) == 0:
+            return "undef"
+        if (y2 - y1) == 0:
+            return "inf"
+        slope = (y2 - y1) / (x2 - x1)
         return round(slope, 3)
 
 class PolyLine(Line):
