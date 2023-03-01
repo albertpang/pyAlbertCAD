@@ -32,7 +32,6 @@ class Sheet:
             try:
                 entity = entities.Item(i)
                 entityObjectName = entity.ObjectName
-                # print(i, entityObjectName)
 
                 # Line Object
                 if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
@@ -42,7 +41,8 @@ class Sheet:
 
                 # Polyline
                 elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
-                    pl = PolyLine(entity, self.__layout.name, self.LinesDF)
+                    if entity.Length > 1:
+                        pl = PolyLine(entity, self.__layout.name, self.LinesDF)
 
                 # Dynamic Blocks
                 elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
@@ -59,7 +59,6 @@ class Sheet:
                     # t = Text(entity, self.__layout.name)
                     # t.appendToDF(self.TextsDF)
                     pass
-
                 else:
                     pass
                 i += 1
@@ -126,8 +125,10 @@ class Sheet:
         print("\nFinding Bill of Materials")
         BillOfMaterialsFilter = self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
         self.BillOfMaterialsDF = self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
-        self.BillOfMaterialsDF['Sheet_no_letters'] = self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
-        self.BillOfMaterialsDF.sort_values("Sheet_no_letters", inplace=True)
+        self.BillOfMaterialsDF['Sheet #'] = self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
+        self.BillOfMaterialsDF.sort_values("Sheet #", inplace=True)
+        self.BillOfMaterialsDF.drop(["Sheet #"], axis = 1)
+        
         format()
 
         
@@ -151,7 +152,7 @@ def purgeZombieEntity():
 
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
-    skipModelSpace = True
+    skipModelSpace = False
     inModelSpace = True
 
     for layout in acad.activeDocument.layouts:
