@@ -23,47 +23,49 @@ class Sheet:
 
 
     def findBlocks(self):
-        entities = self.__layout.Block  
-        for i in range(entities.Count):
-            entity = entities.Item(i)
-            # time.sleep(0.2)
-            # print(i)
-            if i == (entities.Count // 2):
+        entities = self.__layout.Block
+        entitiesCount = entities.Count 
+        i = 0
+        while i < entitiesCount:
+            if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
-                try:
-                    print(entity.ObjectName)
-                    if entity.ObjectName == 'AcDbLine' and entity.Layer == 'C-PR-WATER':
-                        if entity.Length > 1:
-                            l = Line(entity, self.__layout.name)
-                            l.appendToDF(self.LinesDF)
-                    # Polyline
-                    elif entity.ObjectName == 'AcDbPolyline':
-                    # and entity.Layer == 'C-PR-WATER': 
-                        pl = PolyLine(entity, self.__layout.name, self.LinesDF)
-                    # Dynamic Blocks                                               
-                    elif entity.ObjectName == 'AcDbBlockReference' and entity.Name.startswith("WATER"):
-                    # and entity.EffectiveName.startswith("WATER"):
-                        f = Fitting(entity, self.__layout.name)
-                        f.appendToDF(self.FittingsDF)
-                    # Text Items
-                    elif entity.ObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
-                        t = Text(entity, self.__layout.name)
-                        t.appendToDF(self.TextsDF)          
-                    elif entity.ObjectName == 'AcDbMLeader'and "DUCTILE" in entity.textString:
-                        pass
-                    elif entity.ObjectName == 'AcDbZombieEntity':
-                        entity.Erase()
-                        print(i, "erased")
-                        # print(entity.textString)
-                        # print(entity.DoglegLength)
-                        # print(entity.GetLeaderLineVertices(0))
-                        # m = Leader(entity)
-                        # m.appendToDF(self.LeadersDF)
-                    else:
-                        continue
-                    # print (entity.ObjectName)
-                except:
-                    continue
+            try:
+                entity = entities.Item(i)
+                entityObjectName = entity.ObjectName
+                # print(i, entityObjectName)
+
+                # Line Object
+                if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
+                    if entity.Length > 1:
+                        l = Line(entity, self.__layout.name)
+                        l.appendToDF(self.LinesDF)
+
+                # Polyline
+                elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
+                    pl = PolyLine(entity, self.__layout.name, self.LinesDF)
+
+                # Dynamic Blocks
+                elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
+                    f = Fitting(entity, self.__layout.name)
+                    f.appendToDF(self.FittingsDF)
+        
+                # Text Items
+                elif entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText':
+                    t = Text(entity, self.__layout.name)
+                    t.appendToDF(self.TextsDF)          
+
+                # MLeader Object
+                elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
+                    # t = Text(entity, self.__layout.name)
+                    # t.appendToDF(self.TextsDF)
+                    pass
+
+                else:
+                    pass
+                i += 1
+
+            except Exception as e:
+                print(i, entityObjectName, e)
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -118,17 +120,16 @@ class Sheet:
             self.BillOfMaterialsDF['Associated Text String'] =            \
                 self.BillOfMaterialsDF['Associated Text String'].apply    \
                 (lambda x: re.sub(r'\\A1;|\\P', ',', x)).str.replace("\t", "-")
+            
             self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
 
         print("\nFinding Bill of Materials")
         BillOfMaterialsFilter = self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
         self.BillOfMaterialsDF = self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
-        self.BillOfMaterialsDF.sort_values("Sheet", key=lambda x: x.str[1:].astype(int), inplace = True)
+        self.BillOfMaterialsDF['Sheet_no_letters'] = self.BillOfMaterialsDF['Sheet'].apply(lambda x: re.sub(r'\D', '', str(x)))
+        self.BillOfMaterialsDF.sort_values("Sheet_no_letters", inplace=True)
         format()
-        
-        # Still thinking on best way to store Bill of Materials
-        # BillOfMaterialsDict = dict(zip(self.BillOfMaterialsDF['Sheet'], self.BillOfMaterialsDF['Associated Text String']))
-        # print(BillOfMaterialsDict)
+
         
     def saveDF(self):
         print("Saving CSVs")
@@ -150,19 +151,32 @@ def purgeZombieEntity():
 
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
-    # purgeZombieEntity()
+    skipModelSpace = True
     inModelSpace = True
+
     for layout in acad.activeDocument.layouts:
         print(layout.Name)
-        if inModelSpace:
-            s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
-            s.findBlocks()
-            s.findFittingSize()
-            inModelSpace = False
-            continue
+        # Skip Model Space
+        if skipModelSpace:
+            # On Model Space Sheet
+            if inModelSpace:
+                inModelSpace = False
+                continue
+            # Any Paper Sheet
+            else:
+                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                s.findBlocks()
+        # Don't Skip Model Space
         else:
-            s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
-            s.findBlocks()
+            if inModelSpace:
+                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                s.findBlocks()
+                s.findFittingSize()
+                inModelSpace = False
+                continue
+            else:
+                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                s.findBlocks()
 
     s.findAssociatedText()
     s.findBillOfMaterials()
@@ -178,12 +192,8 @@ TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y',
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
+findPaperSheets(LinesDF, FittingsDF, TextsDF)
 
-for i in range(0, 5):
-    findPaperSheets(LinesDF, FittingsDF, TextsDF)
-# sheet.purgeZombieEntity()
-# sheet.findFittingSize()
-# sheet.saveDF()
 
 
         # Depending on Tool Palette used, there may be a unique method for creating blocks
