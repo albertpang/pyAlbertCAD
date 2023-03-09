@@ -1,4 +1,6 @@
 import win32com.client
+import comtypes.client
+import comtypes.gen.AutoCAD as AutoCAD
 import numpy as np
 import pandas as pd
 import time
@@ -98,7 +100,7 @@ class Sheet:
                     pass
                 elif entityObjectName == 'AcDbViewport':
                     minB, maxB = (entity.GetBoundingBox())
-                    print(utility.TranslateCoordinates(minB, acUCS, acWorld, False))
+                    print(acUtils.TranslateCoordinates(minB, AutoCAD.acUCS, AutoCAD.acWorld, False))
                     # globalX, globalY, _ = vp.DucstoWcs(entity.Center[0], entity.Center[1], 0)
                     print("Here")
 
