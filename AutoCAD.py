@@ -52,12 +52,14 @@ class Sheet:
             Exception: If there is an error while iterating over the entities 
             in the layout.
         """
+        acUtils = acad.Activedocument.Utility
         entities = self.__layout.Block
         entitiesCount = entities.Count 
         i, errorCount = 0, 1
         while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
+                
             try:
                 entity = entities.Item(i)
                 entityObjectName = entity.ObjectName
@@ -95,8 +97,9 @@ class Sheet:
                     # t.appendToDF(self.TextsDF)
                     pass
                 elif entityObjectName == 'AcDbViewport':
-                    print(entity.Center[0], entity.Center[1])
-                    print(entity.DucstoWucs(entity.Center[0], entity.Center[1], 0))
+                    minB, maxB = (entity.GetBoundingBox())
+                    print(utility.TranslateCoordinates(minB, acUCS, acWorld, False))
+                    # globalX, globalY, _ = vp.DucstoWcs(entity.Center[0], entity.Center[1], 0)
                     print("Here")
 
                 else:
