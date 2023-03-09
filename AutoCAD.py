@@ -85,8 +85,7 @@ class Sheet:
                     f.appendToDF(self.FittingsDF)
         
                 # Text Items
-                elif (entityObjectName == 'AcDbMText' or 
-                      entity.ObjectName == 'AcDbText'):
+                elif (entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText'):
                     t = Text(entity, self.__layout.name)
                     t.appendToDF(self.TextsDF)          
 
@@ -95,8 +94,14 @@ class Sheet:
                     # t = Text(entity, self.__layout.name)
                     # t.appendToDF(self.TextsDF)
                     pass
+                elif entityObjectName == 'AcDbViewport':
+                    print(entity.Center[0], entity.Center[1])
+                    print(entity.DucstoWucs(entity.Center[0], entity.Center[1], 0))
+                    print("Here")
+
                 else:
                     pass
+
                 i += 1
 
             except Exception as e:
@@ -205,6 +210,7 @@ class Sheet:
                       f"{self.TextsDF['Text'][textIndex]} of "
                       f"{self.TextsDF['Associated Text String'][textIndex]}")
 
+
     def findBillOfMaterials(self):  
         """Identify the bill of materials in the TextsDF DataFrame, extract the
         relevant information, and store it in the BillOfMaterialsDF DataFrame.
@@ -254,7 +260,6 @@ class Sheet:
         # 
         # self.BillOfMaterialsDF.assign(fittingColumn = 
 
-
         
     def saveDF(self):
         """Save the DataFrame objects to CSV files.
@@ -298,7 +303,7 @@ def purgeZombieEntity():
 
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
-    skipModelSpace = False
+    skipModelSpace = True
     inModelSpace = True
 
     for layout in acad.activeDocument.layouts:
