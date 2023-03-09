@@ -1,7 +1,6 @@
 import win32com.client
-import comtypes.client
-import comtypes.gen.AutoCAD as AutoCAD
 import numpy as np
+from ACAD_DataTypes import APoint
 import pandas as pd
 import time
 import re
@@ -57,7 +56,7 @@ class Sheet:
         acUtils = acad.Activedocument.Utility
         entities = self.__layout.Block
         entitiesCount = entities.Count 
-        i, errorCount = 0, 1
+        i, errorCount = 12, 1
         while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
@@ -99,10 +98,27 @@ class Sheet:
                     # t.appendToDF(self.TextsDF)
                     pass
                 elif entityObjectName == 'AcDbViewport':
-                    minB, maxB = (entity.GetBoundingBox())
-                    print(acUtils.TranslateCoordinates(minB, AutoCAD.acUCS, AutoCAD.acWorld, False))
-                    # globalX, globalY, _ = vp.DucstoWcs(entity.Center[0], entity.Center[1], 0)
-                    print("Here")
+                    ad = acad.ActiveDocument
+                    
+                    # minB, maxB = (entity.GetBoundingBox())
+                    # boundPoint1 = APoint(minB[0], minB[1], minB[2])
+                    # boundPoint2 = APoint(maxB[0], maxB[1], maxB[2])
+
+                    
+                    leftTopCorner = APoint(entity.Center[0]- (entity.Width // 2), entity.Center[1] + (entity.Height // 2))
+                    rightTopCorner = APoint(entity.Center[0] + (entity.Width // 2), entity.Center[1] + (entity.Height // 2))
+                    leftBotCorner = APoint(entity.Center[0]- (entity.Width // 2), entity.Center[1]- (entity.Height // 2))
+                    rightBotCorner = APoint(entity.Center[0]+ (entity.Width // 2), entity.Center[1]- (entity.Height // 2))
+                    
+                    acad.ActiveDocument.PaperSpace.AddLine(leftTopCorner, leftBotCorner)
+                    acad.ActiveDocument.PaperSpace.AddLine(leftBotCorner, rightBotCorner)
+                    acad.ActiveDocument.PaperSpace.AddLine(rightBotCorner, rightTopCorner)
+                    acad.ActiveDocument.PaperSpace.AddLine(rightTopCorner, leftTopCorner)
+
+                    
+                    print(ad.Center)
+                    
+                    
 
                 else:
                     pass
@@ -112,6 +128,9 @@ class Sheet:
             except Exception as e:
                 errorCount += 1
                 print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
+
+    def findViewportBoundary():
+        acad.ActiveDocument.SendCommand("_mspace ")
 
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -303,6 +322,7 @@ def purgeZombieEntity():
     """
     i = 0
     db = acad.ActiveDocument.Modelspace
+   
     for i in range(db.count):
         print(db.Item(i).ObjectName)      
 
