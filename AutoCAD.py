@@ -98,22 +98,9 @@ class Sheet:
                     # t.appendToDF(self.TextsDF)
                     pass
                 elif entityObjectName == 'AcDbViewport':
-                    # tp = APoint(16.37884029, 15.42291262)
-                    # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 1, 0, False))
-                    psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
-                    psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
-                    
-                    psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-                    psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
+                    pass
 
-                    acad.ActiveDocument.SendCommand("_MSpace ")
-                    acad.ActiveDocument.SetVariable("MSLTSCALE", 1)
-                    wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1, 0, False)
-                    wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
-                   
-                    ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name, 
-                                                               psleftTopCorner, psrightBotCorner,
-                                                                wcsleftTop, wcsrightBot]
+
                     
                 else:
                     pass
@@ -123,12 +110,34 @@ class Sheet:
             except Exception as e:
                 errorCount += 1
                 print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
-                
-            ViewportsDF.to_csv('ViewportsCSV')
+    
+    
 
-    def findViewportBoundary():
-        acad.ActiveDocument.SendCommand("_mspace ")
 
+
+    # def translateCoordinates(self):
+        # tp = APoint(18.50201834, 17.10606439)
+        # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 2, 0, False))
+        # "2706723.25739601, 270394.52176793"
+
+        # psCenter = (entity.Center[0], entity.Center[1])
+        # psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
+        # psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
+        
+        # psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
+        # psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
+        # psCenterPoint = APoint(entity.Center[0], entity.Center[1])
+
+        # # Translate Coordinates only works when in Model Space
+        # acad.ActiveDocument.SendCommand("_Model ")
+        # wcsCenter = acad.ActiveDocument.Utility.TranslateCoordinates(psCenterPoint, 1, 0, False)
+        # wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1,0, False)
+        # wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
+                            # ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name,
+                    #                                            entity.Width, entity.Height,
+                    #                                            psCenter, wcsCenter, 
+                    #                                            psleftTopCorner, psrightBotCorner,
+            #                                            wcsleftTop, wcsrightBot]
 
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         """
@@ -302,6 +311,7 @@ class Sheet:
         print("---Logged to Texts")
         self.BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
         print("----Logged to BOM")
+        ViewportsDF.to_csv('ViewportsCSV')
 
     
 def purgeZombieEntity():
@@ -323,6 +333,50 @@ def purgeZombieEntity():
     for i in range(db.count):
         print(db.Item(i).ObjectName)      
 
+def createViewportLayer():
+    coordinateLayer = acad.ActiveDocument.layers.Add("AlbertToolLayer")
+    coordinateLayer.LayerOn
+    coordinateLayer.color = 40
+        # Get the active document
+    doc = acad.ActiveDocument
+
+    # Get the Layouts collection for the current document
+    layouts = doc.Layouts
+
+    # Loop over all layouts and print their names
+    for layout in layouts:
+        if layout.Name != "Model":
+            print(layout.Name)
+            doc.ActiveLayout = doc.Layouts(layout.Name)
+            
+            for entity in acad.ActiveDocument.ActiveLayout.Block:
+                if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
+                    psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
+                                        entity.Center[1] + (abs(entity.Height) / 2))
+                    psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
+                                        entity.Center[1] - (abs(entity.Height) / 2))
+                    psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
+                    psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
+                    acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
+                    acad.SendCommand("_select\n")
+                    acad.SendCommand("_single\n")
+                    acad.SendCommand("_pickfirst\n")
+                    acad.SendCommand("_circle\n")
+                    # doc.SendCommand("CHSPACE ")
+                    continue
+            for entity in acad.ActiveDocument.ActiveLayout.Block:
+                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
+                    entity.Highlight()
+                    entity.Update()
+                    x, y = (entity.StartPoint[0], entity.StartPoint[1])
+                    doc.SendCommand("_line " + str(x) + ',' + str(y) + " ")
+
+def fitPage(layout, entity):
+    height, width = layout.GetPaperSize()
+    width /= 25.4
+    height /= 25.4
+
+    return (entity.Height < height and entity.Width < width)
 
 def findPaperSheets(linesDF, FittingsDF, TextsDF):
     skipModelSpace = True
@@ -339,6 +393,7 @@ def findPaperSheets(linesDF, FittingsDF, TextsDF):
             # Any Paper Sheet
             else:
                 s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                
                 s.findBlocks()
         # Don't Skip Model Space
         else:
@@ -365,7 +420,9 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'topLeftBoundary', 'botRightBoundary',
-                                    'mstopLeftBoundary', 'msbotRightBoundary'])
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Center Point',
+                                    'ms Center Point', 'topLeftBoundary', 'botRightBoundary',
+                                    'ms topLeftBoundary', 'ms botRightBoundary'])
 
+createViewportLayer()
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
