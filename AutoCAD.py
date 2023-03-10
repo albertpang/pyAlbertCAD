@@ -56,7 +56,7 @@ class Sheet:
         acUtils = acad.Activedocument.Utility
         entities = self.__layout.Block
         entitiesCount = entities.Count 
-        i, errorCount = 12, 1
+        i, errorCount = 0, 1
         while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
@@ -100,12 +100,13 @@ class Sheet:
                 elif entityObjectName == 'AcDbViewport':
                     # tp = APoint(16.37884029, 15.42291262)
                     # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 1, 0, False))
-                    psleftTopCorner = (entity.Center[0] - (entity.Width / 2), entity.Center[1] + (entity.Height / 2))
-                    psrightBotCorner = (entity.Center[0] + (entity.Width / 2), entity.Center[1] - (entity.Height / 2))
+                    psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
+                    psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
                     
                     psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
                     psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
 
+                    acad.ActiveDocument.SendCommand("_MSpace ")
                     acad.ActiveDocument.SetVariable("MSLTSCALE", 1)
                     wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1, 0, False)
                     wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
