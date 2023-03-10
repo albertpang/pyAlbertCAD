@@ -98,28 +98,22 @@ class Sheet:
                     # t.appendToDF(self.TextsDF)
                     pass
                 elif entityObjectName == 'AcDbViewport':
-                    ad = acad.ActiveDocument
+                    # tp = APoint(16.37884029, 15.42291262)
+                    # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 1, 0, False))
+                    psleftTopCorner = (entity.Center[0] - (entity.Width / 2), entity.Center[1] + (entity.Height / 2))
+                    psrightBotCorner = (entity.Center[0] + (entity.Width / 2), entity.Center[1] - (entity.Height / 2))
                     
-                    # minB, maxB = (entity.GetBoundingBox())
-                    # boundPoint1 = APoint(minB[0], minB[1], minB[2])
-                    # boundPoint2 = APoint(maxB[0], maxB[1], maxB[2])
+                    psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
+                    psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
 
+                    acad.ActiveDocument.SetVariable("MSLTSCALE", 1)
+                    wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1, 0, False)
+                    wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
+                   
+                    ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name, 
+                                                               psleftTopCorner, psrightBotCorner,
+                                                                wcsleftTop, wcsrightBot]
                     
-                    leftTopCorner = APoint(entity.Center[0]- (entity.Width // 2), entity.Center[1] + (entity.Height // 2))
-                    rightTopCorner = APoint(entity.Center[0] + (entity.Width // 2), entity.Center[1] + (entity.Height // 2))
-                    leftBotCorner = APoint(entity.Center[0]- (entity.Width // 2), entity.Center[1]- (entity.Height // 2))
-                    rightBotCorner = APoint(entity.Center[0]+ (entity.Width // 2), entity.Center[1]- (entity.Height // 2))
-                    
-                    acad.ActiveDocument.PaperSpace.AddLine(leftTopCorner, leftBotCorner)
-                    acad.ActiveDocument.PaperSpace.AddLine(leftBotCorner, rightBotCorner)
-                    acad.ActiveDocument.PaperSpace.AddLine(rightBotCorner, rightTopCorner)
-                    acad.ActiveDocument.PaperSpace.AddLine(rightTopCorner, leftTopCorner)
-
-                    
-                    print(ad.Center)
-                    
-                    
-
                 else:
                     pass
 
@@ -128,6 +122,8 @@ class Sheet:
             except Exception as e:
                 errorCount += 1
                 print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
+                
+            ViewportsDF.to_csv('ViewportsCSV')
 
     def findViewportBoundary():
         acad.ActiveDocument.SendCommand("_mspace ")
@@ -368,5 +364,7 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'topLeftBoundary', 'botRightBoundary',
+                                    'mstopLeftBoundary', 'msbotRightBoundary'])
 
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
