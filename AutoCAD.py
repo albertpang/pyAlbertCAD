@@ -1,4 +1,5 @@
 import win32com.client
+from win32com.client import constants
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -333,12 +334,28 @@ def purgeZombieEntity():
     for i in range(db.count):
         print(db.Item(i).ObjectName)      
 
-def createViewportLayer():
-    coordinateLayer = acad.ActiveDocument.layers.Add("AlbertToolLayer")
+def removeAlbertTool():
+    layouts = acad.ActiveDocument.Layouts
+    for layout in layouts:
+        if layout.Name != "Model":
+            print(layout.Name)
+            acad.ActiveDocument.SendCommand("pSPACE ")
+            time.sleep(1)
+            acad.ActiveDocument.ActiveLayout = acad.ActiveDocument.Layouts(layout.Name)
+            time.sleep(1)
+            for entity in acad.ActiveDocument.ActiveLayout.Block:
+                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
+                    entity.Delete()
+       
+def createAlbertLayer():
+    doc = acad.ActiveDocument
+    coordinateLayer = doc.layers.Add("AlbertToolLayer")
     coordinateLayer.LayerOn
     coordinateLayer.color = 40
-        # Get the active document
+
+def createViewportLayer():
     doc = acad.ActiveDocument
+    # Get the active document
 
     # Get the Layouts collection for the current document
     layouts = doc.Layouts
@@ -346,30 +363,53 @@ def createViewportLayer():
     # Loop over all layouts and print their names
     for layout in layouts:
         if layout.Name != "Model":
+            if doc.SelectionSets.Item("MySelectionSet") is not None:
+                doc.SelectionSets.Item("MySelectionSet").Delete()
+            # Clear the selection set
+            ss = doc.SelectionSets.Add("MySelectionSet")
+
+            # Add all lines with the layer "AlbertToolLayer" to the selection set
+
             print(layout.Name)
+            acad.ActiveDocument.SendCommand("pSPACE ")
+            time.sleep(1)
             doc.ActiveLayout = doc.Layouts(layout.Name)
-            
-            for entity in acad.ActiveDocument.ActiveLayout.Block:
+            time.sleep(1)
+            for entity in doc.ActiveLayout.Block:
                 if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
+       
                     psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
                                         entity.Center[1] + (abs(entity.Height) / 2))
                     psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
                                         entity.Center[1] - (abs(entity.Height) / 2))
                     psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
                     psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-                    acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
-                    acad.SendCommand("_select\n")
-                    acad.SendCommand("_single\n")
-                    acad.SendCommand("_pickfirst\n")
-                    acad.SendCommand("_circle\n")
-                    # doc.SendCommand("CHSPACE ")
+                    vpLine = acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
+                    vpLine.Layer = "AlbertToolLayer"
+                    vpLine.Highlight(True)
+                    acad.ActiveDocument.SendCommand("select last  chspace   ")
+                    acad.ActiveDocument.SendCommand("_pspace ")
+                    print(vpLine.StartPoint[0], vpLine.StartPoint[1])
+                    
+                    
+                    # acad.ActiveDocument.SendCommand("last ")
+                    # acad.ActiveDocument.SendCommand(" ")
+                    
+                    print("Herer")
+    
+                    # 
+                    # acad.SendCommand("_select\n")
+                    # acad.SendCommand("_single\n")
+                    # acad.SendCommand("_pickfirst\n")
+                    # acad.SendCommand("_circle\n")
+                    
                     continue
-            for entity in acad.ActiveDocument.ActiveLayout.Block:
-                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
-                    entity.Highlight()
-                    entity.Update()
-                    x, y = (entity.StartPoint[0], entity.StartPoint[1])
-                    doc.SendCommand("_line " + str(x) + ',' + str(y) + " ")
+            # for entity in acad.ActiveDocument.ActiveLayout.Block:
+            #     if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
+            #         entity.Highlight()
+            #         entity.Update()
+            #         x, y = (entity.StartPoint[0], entity.StartPoint[1])
+            #         doc.SendCommand("_line " + str(x) + ',' + str(y) + " ")
 
 def fitPage(layout, entity):
     height, width = layout.GetPaperSize()
@@ -423,6 +463,6 @@ BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Center Point',
                                     'ms Center Point', 'topLeftBoundary', 'botRightBoundary',
                                     'ms topLeftBoundary', 'ms botRightBoundary'])
-
+# removeAlbertTool()
 createViewportLayer()
 findPaperSheets(LinesDF, FittingsDF, TextsDF)
