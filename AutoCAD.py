@@ -354,41 +354,43 @@ def createAlbertLayer():
     coordinateLayer.color = 40
 
 def createViewportLayer():
+
+    def iterateViewportEntity(entity):
+        if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
+            psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
+                                entity.Center[1] + (abs(entity.Height) / 2))
+            psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
+                                entity.Center[1] - (abs(entity.Height) / 2))
+            psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
+            psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
+            vpLine = acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
+            vpLine.Layer = "AlbertToolLayer"
+            vpLine.Highlight(True)
+            print(psleftTopCorner[0], psleftTopCorner[1])
+            acad.ActiveDocument.SendCommand(f"select last  chspace {psleftTopCorner[0]} {psleftTopCorner[1]}  ")
+            acad.ActiveDocument.SendCommand("_pspace ")
+
     doc = acad.ActiveDocument
-    # Get the active document
-
-    # Get the Layouts collection for the current document
     layouts = doc.Layouts
-
     # Loop over all layouts and print their names
     for layout in layouts:
         if layout.Name != "Model":
-
             print(layout.Name)
             acad.ActiveDocument.SendCommand("pSPACE ")
+            doc.ActiveLayout = doc.Layouts(layout.Name)
+            time.sleep(0.3)
             try:
-                doc.ActiveLayout = doc.Layouts(layout.Name)
+                acad.ActiveDocument.SendCommand("z a  ")
                 for entity in doc.ActiveLayout.Block:
-                    if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
-                        
-                        psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
-                                            entity.Center[1] + (abs(entity.Height) / 2))
-                        psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
-                                            entity.Center[1] - (abs(entity.Height) / 2))
-                        psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-                        psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-                        vpLine = acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
-                        vpLine.Layer = "AlbertToolLayer"
-                        vpLine.Highlight(True)
-                        print(psleftTopCorner[0], psleftTopCorner[1])
-                        acad.ActiveDocument.SendCommand(f"select last  chspace {psleftTopCorner[0]} {psleftTopCorner[1]}  ")
-                        # 
-                        # acad.ActiveDocument.SendCommand(f"select {psleftTopCorner[0]} {psleftTopCorner[1]}  ")
-                        acad.ActiveDocument.SendCommand("_pspace ")
-                        continue
-            except:
-                    pass
+                    iterateViewportEntity(entity)
+                    continue
+            except:    
+                iterateViewportEntity(entity)
+                print("fail")
+
         time.sleep(0.5)
+
+
 
 def fitPage(layout, entity):
     def isViewPortSize(layout, entity):
