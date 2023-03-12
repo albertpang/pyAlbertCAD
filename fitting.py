@@ -1,21 +1,23 @@
+from entity import Entity
 import pandas as pd
 
-class Fitting:
-    def __init__(self, block):
-        self.FittingID = block.ObjectID
-        self.FittingsX = round(block.insertionPoint[0], 2)
-        self.FittingsY = round(block.insertionPoint[1], 2)
-        blockDynamicProperties = block.GetDynamicBlockProperties()
-        for prop in blockDynamicProperties:
-            if prop.PropertyName == 'Visibility1':
-                self.dynamicBlockName = prop.Value
+class Fitting(Entity):
+    def __init__(self, block, layout):
+        super().__init__(block, layout)
+        if block.IsDynamicBlock:
+            blockDynamicProperties = block.GetDynamicBlockProperties()
+
+            for prop in blockDynamicProperties:
+                # InHouse Palette use DBlock -- Vis1 To store Name
+                if prop.PropertyName == 'Visibility1':
+                    self.BlockName = prop.Value
+                    return
+            self.BlockName = block.EffectiveName
+        else:
+            self.BlockName = block.Name
+
+        
 
     def appendToDF(self, DF):
-        DF.loc[len(DF.index)] = [self.FittingID, self.dynamicBlockName, 
-                                self.FittingsX, self.FittingsY, "N/A"]
-
-    def saveDF(self, DF):
-        DF.to_csv('FittingsCSV')
-    
-    def isCollinear(self):
-        pass
+        DF.loc[len(DF.index)] = [self.ID, self.sheet, self.BlockName, 
+                                self.locationX, self.locationY, "N/A", "N/A"]
