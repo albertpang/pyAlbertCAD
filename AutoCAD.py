@@ -1,5 +1,6 @@
 import win32com.client
 from win32com.client import constants
+import pythoncom
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -367,7 +368,7 @@ def createViewportLayer():
             vpLine.Layer = "AlbertToolLayer"
             vpLine.Highlight(True)
             print(psleftTopCorner[0], psleftTopCorner[1])
-            acad.ActiveDocument.SendCommand(f"select last  chspace {psleftTopCorner[0]} {psleftTopCorner[1]}  ")
+            acad.ActiveDocument.SendCommand(f"select last  chspace  ")
             acad.ActiveDocument.SendCommand("_pspace ")
 
     doc = acad.ActiveDocument
@@ -375,20 +376,27 @@ def createViewportLayer():
     # Loop over all layouts and print their names
     for layout in layouts:
         if layout.Name != "Model":
-            print(layout.Name)
-            acad.ActiveDocument.SendCommand("pSPACE ")
             doc.ActiveLayout = doc.Layouts(layout.Name)
+            print(layout.Name)
             time.sleep(0.3)
-            try:
-                acad.ActiveDocument.SendCommand("z a  ")
-                for entity in doc.ActiveLayout.Block:
-                    iterateViewportEntity(entity)
-                    continue
-            except:    
-                iterateViewportEntity(entity)
-                print("fail")
-
-        time.sleep(0.5)
+            acad.ActiveDocument.SendCommand("pSPACE ")
+            acad.ActiveDocument.SendCommand("z a  ")
+            entities = layout.Block
+            entitiesCount = entities.Count
+            i, errorCount = 0, 0
+            while i < entitiesCount and errorCount < 3:
+                try:     
+                    entity = entities.Item(i)
+                    if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
+                        entity.ViewportOn = False
+                        entity.ViewportOn = True
+                        iterateViewportEntity(entity)
+                    i += 1
+                except Exception as e:
+                    errorCount += 1
+                    time.sleep(0.2)
+                    print(f"Attempt Count: {errorCount}", e)
+            time.sleep(0.3)
 
 
 
