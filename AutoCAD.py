@@ -365,38 +365,47 @@ def createViewportLayer():
             psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
             psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
             vpLine = acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
-            vpLine.Layer = "AlbertToolLayer"
             vpLine.Highlight(True)
-            print(psleftTopCorner[0], psleftTopCorner[1])
+
+            ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, layout,
+                                                       entity.Width, entity.Height,
+                                                       psleftTopCorner, psrightBotCorner,
+                                                       (vpLine.StartPoint[0], vpLine.StartPoint[1]), 
+                                                       (vpLine.EndPoint[0], vpLine.EndPoint[1])]
             acad.ActiveDocument.SendCommand(f"select last  chspace  ")
+            time.sleep(0.2)
             acad.ActiveDocument.SendCommand("_pspace ")
 
     doc = acad.ActiveDocument
     layouts = doc.Layouts
+    doc.ActiveLayer = doc.Layers("AlbertToolLayer")
     # Loop over all layouts and print their names
+
     for layout in layouts:
         if layout.Name != "Model":
             doc.ActiveLayout = doc.Layouts(layout.Name)
             print(layout.Name)
-            time.sleep(0.3)
+            time.sleep(0.2)
             acad.ActiveDocument.SendCommand("pSPACE ")
-            acad.ActiveDocument.SendCommand("z a  ")
+            acad.ActiveDocument.SendCommand("z a ")
             entities = layout.Block
             entitiesCount = entities.Count
             i, errorCount = 0, 0
             while i < entitiesCount and errorCount < 3:
-                try:     
-                    entity = entities.Item(i)
+                try:
+                    entity = entities.Item(i)     
                     if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
                         entity.ViewportOn = False
                         entity.ViewportOn = True
+                        time.sleep(0.2)
                         iterateViewportEntity(entity)
+                    errorCount = 0
                     i += 1
                 except Exception as e:
                     errorCount += 1
                     time.sleep(0.2)
                     print(f"Attempt Count: {errorCount}", e)
-            time.sleep(0.3)
+            time.sleep(0.2)
 
 
 
@@ -464,8 +473,8 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Center Point',
-                                    'ms Center Point', 'topLeftBoundary', 'botRightBoundary',
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 
+                                    'topLeftBoundary', 'botRightBoundary',
                                     'ms topLeftBoundary', 'ms botRightBoundary'])
 # removeAlbertTool()
 createViewportLayer()
