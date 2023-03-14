@@ -335,134 +335,139 @@ def purgeZombieEntity():
     for i in range(db.count):
         print(db.Item(i).ObjectName)      
 
-def removeAlbertTool():
-    layouts = acad.ActiveDocument.Layouts
-    for layout in layouts:
-        if layout.Name != "Model":
-            print(layout.Name)
-            acad.ActiveDocument.SendCommand("pSPACE ")
-            time.sleep(1)
-            acad.ActiveDocument.ActiveLayout = acad.ActiveDocument.Layouts(layout.Name)
-            time.sleep(1)
-            for entity in acad.ActiveDocument.ActiveLayout.Block:
-                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
-                    entity.Delete()
-       
-def createAlbertLayer():
-    doc = acad.ActiveDocument
-    coordinateLayer = doc.layers.Add("AlbertToolLayer")
-    coordinateLayer.LayerOn
-    coordinateLayer.color = 40
+class PyHelp():
+    def __init__(self) -> None:
+        self.doc = acad.ActiveDocument
+        self.createAlbertLayer()
+        self.findViewports()
+        self.findPaperSheets(LinesDF, FittingsDF, TextsDF)
 
-def createViewportLayer():
 
-    def iterateViewportEntity(entity):
-        if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
+    def createAlbertLayer(self):
+        coordinateLayer = self.doc.layers.Add("AlbertToolLayer")
+        coordinateLayer.LayerOn
+        coordinateLayer.color = 40
+
+    def removeAlbertTool(self):
+            layouts = self.doc.Layouts
+            for layout in layouts:
+                if layout.Name != "Model":
+                    print(layout.Name)
+                    self.doc.SendCommand("pSPACE ")
+                    time.sleep(1)
+                    self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
+                    time.sleep(1)
+                    for entity in self.doc.ActiveLayout.Block:
+                        if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
+                            entity.Delete()
+
+    def validateViewport(self, layout, entity):
+        # Fits within the bounds of the page
+        def isViewPortSize(layout, entity):
+            PIXELtoINCH = 25.4
+            height, width = layout.GetPaperSize()
+            width /= PIXELtoINCH
+            height /= PIXELtoINCH
+            return (entity.Height < height and entity.Width < width)
+        # Starts and ends within the bounds of the page
+        def isWithinPage(entity):
             psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
                                 entity.Center[1] + (abs(entity.Height) / 2))
             psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
                                 entity.Center[1] - (abs(entity.Height) / 2))
-            psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-            psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-            vpLine = acad.ActiveDocument.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
-            vpLine.Highlight(True)
-
-            ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, layout,
-                                                       entity.Width, entity.Height,
-                                                       psleftTopCorner, psrightBotCorner,
-                                                       (vpLine.StartPoint[0], vpLine.StartPoint[1]), 
-                                                       (vpLine.EndPoint[0], vpLine.EndPoint[1])]
-            acad.ActiveDocument.SendCommand(f"select last  chspace  ")
-            time.sleep(0.2)
-            acad.ActiveDocument.SendCommand("_pspace ")
-
-    doc = acad.ActiveDocument
-    layouts = doc.Layouts
-    doc.ActiveLayer = doc.Layers("AlbertToolLayer")
-    # Loop over all layouts and print their names
-
-    for layout in layouts:
-        if layout.Name != "Model":
-            doc.ActiveLayout = doc.Layouts(layout.Name)
-            print(layout.Name)
-            time.sleep(0.2)
-            acad.ActiveDocument.SendCommand("pSPACE ")
-            acad.ActiveDocument.SendCommand("z a ")
-            entities = layout.Block
-            entitiesCount = entities.Count
-            i, errorCount = 0, 0
-            while i < entitiesCount and errorCount < 3:
-                try:
-                    entity = entities.Item(i)     
-                    if entity.EntityName == "AcDbViewport" and fitPage(layout, entity):
-                        entity.ViewportOn = False
-                        entity.ViewportOn = True
-                        time.sleep(0.2)
-                        iterateViewportEntity(entity)
-                    errorCount = 0
-                    i += 1
-                except Exception as e:
-                    errorCount += 1
-                    time.sleep(0.2)
-                    print(f"Attempt Count: {errorCount}", e)
-            time.sleep(0.2)
-
-
-
-def fitPage(layout, entity):
-    def isViewPortSize(layout, entity):
-        PIXELtoINCH = 25.4
-        height, width = layout.GetPaperSize()
-        width /= PIXELtoINCH
-        height /= PIXELtoINCH
-        return (entity.Height < height and entity.Width < width)
-
-    def isWithinPage(entity):
-        psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
-                            entity.Center[1] + (abs(entity.Height) / 2))
-        psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
-                            entity.Center[1] - (abs(entity.Height) / 2))
-        if (psleftTopCorner[0] > 0 and psleftTopCorner[1]  > 0 and 
-            psrightBotCorner[0] > 0 and psrightBotCorner[1] > 0):
-            return True
-        else:
-            return False
-    return (isViewPortSize(layout, entity) and isWithinPage(entity))
-
-    
-
-def findPaperSheets(linesDF, FittingsDF, TextsDF):
-    skipModelSpace = True
-    inModelSpace = True
-
-    for layout in acad.activeDocument.layouts:
-        print(layout.Name)
-        # Skip Model Space
-        if skipModelSpace:
-            # On Model Space Sheet
-            if inModelSpace:
-                inModelSpace = False
-                continue
-            # Any Paper Sheet
+            if (psleftTopCorner[0] > 0 and psleftTopCorner[1]  > 0 and 
+                psrightBotCorner[0] > 0 and psrightBotCorner[1] > 0):
+                return True
             else:
-                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                return False
+            
+        return (isViewPortSize(layout, entity) and isWithinPage(entity))
+
+
+    def findViewports(self):
+        def appendToDF(entity):
+            objectID = entity.ObjectID
+            if entity.EntityName == "AcDbViewport" and self.validateViewport(layout, entity):
+                psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
+                                    entity.Center[1] + (abs(entity.Height) / 2))
+                psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
+                                    entity.Center[1] - (abs(entity.Height) / 2))
                 
-                s.findBlocks()
-        # Don't Skip Model Space
-        else:
-            if inModelSpace:
-                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
-                s.findBlocks()
-                s.findFittingSize()
-                inModelSpace = False
-                continue
-            else:
-                s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
-                s.findBlocks()
+                psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
+                psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
+                vpLine = self.doc.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
+                self.doc.SendCommand("select last  chspace  ")
+                ViewportsDF.loc[len(ViewportsDF.index)] = [objectID, layout.Name,
+                                                entity.Width, entity.Height,
+                                                psleftTopCorner, psrightBotCorner,
+                                                (vpLine.StartPoint[0], vpLine.StartPoint[1]), 
+                                                (vpLine.EndPoint[0], vpLine.EndPoint[1])]
+                self.doc.SendCommand("pspace ")
 
-    s.findAssociatedText()
-    s.findBillOfMaterials()
-    s.saveDF()
+        layouts = self.doc.Layouts
+        self.doc.ActiveLayer = self.doc.Layers("AlbertToolLayer")
+        # Loop over all layouts and print their names
+
+        for layout in layouts:
+            if layout.Name != "Model":
+                self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
+                print(layout.Name)
+                self.doc.SendCommand("_pspace z a ")
+                entities = layout.Block
+                entitiesCount = entities.Count
+                i, errorCount = 0, 0
+                while i < entitiesCount and errorCount < 3:
+                    # try:
+                        entity = entities.Item(i)     
+                        if entity.EntityName == "AcDbViewport" and self.validateViewport(layout, entity):
+                            entity.ViewportOn = False
+                            entity.ViewportOn = True
+                            time.sleep(0.2)
+                            appendToDF(entity)
+                        errorCount = 0
+                        i += 1
+                    # except Exception as e:
+                    #     errorCount += 1
+                    #     try:
+                    #         self.vpLine.Delete()
+                    #         print("Line Deleted")
+                    #     except:
+                    #         pass
+                    #     time.sleep(0.5)
+                    #     print(f"Attempt Count: {errorCount}", e)
+
+
+    def findPaperSheets(self, linesDF, FittingsDF, TextsDF):
+        skipModelSpace = True
+        inModelSpace = True
+
+        for layout in acad.activeDocument.layouts:
+            print(layout.Name)
+            # Skip Model Space
+            if skipModelSpace:
+                # On Model Space Sheet
+                if inModelSpace:
+                    inModelSpace = False
+                    continue
+                # Any Paper Sheet
+                else:
+                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s.findBlocks()
+            # Don't Skip Model Space
+            else:
+                if inModelSpace:
+                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s.findBlocks()
+                    s.findFittingSize()
+                    inModelSpace = False
+                    continue
+                else:
+                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s.findBlocks()
+
+        s.findAssociatedText()
+        s.findBillOfMaterials()
+        s.saveDF()
 
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
@@ -474,8 +479,8 @@ TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y',
                                 'Associated Text ID', 'Associated Text String'])        
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 
-                                    'topLeftBoundary', 'botRightBoundary',
-                                    'ms topLeftBoundary', 'ms botRightBoundary'])
+                                    'ModelSpace Coordinate TopLeft', 'PaperSpace Coordinate BotRight',
+                                    'ModelSpace Coordinate TopLeft', 'ModelSpace Coordinate BotRight'])
 # removeAlbertTool()
-createViewportLayer()
-findPaperSheets(LinesDF, FittingsDF, TextsDF)
+p = PyHelp()
+
