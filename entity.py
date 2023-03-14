@@ -1,7 +1,6 @@
 import pandas as pd
 import math
 import win32com.client
-from entity import Entity
 from ACAD_DataTypes import APoint
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
@@ -28,49 +27,38 @@ class Fitting(Entity):
         else:
             self.BlockName = block.Name
 
-    def appendToDF(self, DF):
-        DF.loc[len(DF.index)] = [self.ID, self.sheet, self.BlockName, 
-                                self.locationX, self.locationY, "N/A", "N/A"]
+
         
 class Text(Entity):
     def __init__(self, block, layout):
         super().__init__(block, layout)
         self.text = block.textString
 
-    def appendToDF(self, DF):
-        DF.loc[len(DF.index)] = [self.ID, self.sheet, self.text, 
-                                 self.locationX, self.locationY, "N/A", "N/A"]
-
 class Viewport(Entity):
-    def __init__(self, entity, layout):
-        
-        objectID = entity.ObjectID
-        sheet = layout.Name
+    def __init__(self, block, layout):
+        self.ID = block.ObjectID
+        self.center = block.Center
+        self.height = block.Height
+        self.width = block.Width
+        self.sheet = layout.Name
         self.crossLine = None
-        psLeftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
-                            entity.Center[1] + (abs(entity.Height) / 2))
-        psRightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
-                            entity.Center[1] - (abs(entity.Height) / 2))
+        self.psLeftTopCorner = (self.center[0] - (abs(self.width) / 2), 
+                            self.center[1] + (abs(self.height) / 2))
+        self.psRightBotCorner = (self.center[0] + (abs(self.width) / 2), 
+                            self.center[1] - (abs(self.height) / 2))
         
         # Create AutoCAD Point object
-        psleftTopCornerPoint = APoint(psLeftTopCorner[0], psLeftTopCorner[1])
-        psrightBotCornerPoint = APoint(psRightBotCorner[0], psRightBotCorner[1])
-        self.convertLinePaperSpace()
-        self.appendToDF()
+        psleftTopCornerPoint = APoint(self.psLeftTopCorner[0], self.psLeftTopCorner[1])
+        psrightBotCornerPoint = APoint(self.psRightBotCorner[0], self.psRightBotCorner[1])
+        self.convertLinePaperSpace(psleftTopCornerPoint, psrightBotCornerPoint)
     
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
         doc.SendCommand("select last  chspace  ")
+        self.msLeftTopCorner = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1]) 
+        self.msRightBotCorner = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
         doc.SendCommand("pspace ")
-
-
-    def appendToDF(self, DF):
-        DF.loc[len(DF.index)] = [Viewport.objectID, Viewport.sheet,
-                                 Viewport.Width, Viewport.Height,
-                                Viewport.psLeftTopCorner, Viewport.psRightBotCorner,
-                                (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1]), 
-                                (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])]
 
     # TranslateCoordinates Method -- Does Not Work
         # def translateCoordinates(self):
@@ -96,7 +84,7 @@ class Viewport(Entity):
                         #                                            psCenter, wcsCenter, 
                         #                                            psleftTopCorner, psrightBotCorner,
                 #                                            wcsleftTop, wcsrightBot]
-                
+
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
         self.ID = block.ObjectID
@@ -118,10 +106,6 @@ class Line(Entity):
         self.slope = self.calculateSlope(self.startX, self.startY, 
                                          self.endX, self.endY)
 
-    def appendToDF(self, DF):
-        DF.loc[len(DF.index)] = [self.ID, self.sheet, self.layer, self.startX,
-                                self.startY, self.endX, self.endY, self.length,
-                                self.slope]
 
     def calculateLength(self, x1, y1, x2, y2):
         length = math.dist([x1, y1], [x2, y2])
@@ -142,8 +126,8 @@ class PolyLine(Line):
         self.block = block
         self.sheet = layout
         self.layer = block.Layer
-        self.lineDF = DF
-        self.breakPolyline()
+        self.DF = DF
+        
     
 
     def breakPolyline(self):
@@ -159,12 +143,12 @@ class PolyLine(Line):
                                                 self.endX, self.endY)
             self.appendToDF()
             i += 2
-    
 
     def appendToDF(self):
-        self.lineDF.loc[len(self.lineDF.index)] = [f"Polyline - {self.block.ObjectId}", 
-                                                    self.sheet, self.layer, 
-                                                    self.startX, self.startY, 
-                                                    self.endX, self.endY, self.length,
-                                                    self.slope]   
-        
+        self.DF.loc[len(self.DF.index)] = [f"Polyline - {self.ID}", 
+                                            self.sheet, self.layer, 
+                                            self.startX, self.startY, 
+                                            self.endX, self.endY, self.length,
+                                            self.slope]
+
+                
