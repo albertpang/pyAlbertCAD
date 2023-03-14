@@ -8,9 +8,7 @@ import time
 import re
 
 # Importing Class Objects
-from line import Line, PolyLine
-from fitting import Fitting
-from text import Text
+from entity import Fitting, Line, PolyLine, Text, Viewport
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 
@@ -114,33 +112,6 @@ class Sheet:
                 print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
     
     
-
-
-
-    # def translateCoordinates(self):
-        # tp = APoint(18.50201834, 17.10606439)
-        # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 2, 0, False))
-        # "2706723.25739601, 270394.52176793"
-
-        # psCenter = (entity.Center[0], entity.Center[1])
-        # psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
-        # psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
-        
-        # psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-        # psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-        # psCenterPoint = APoint(entity.Center[0], entity.Center[1])
-
-        # # Translate Coordinates only works when in Model Space
-        # acad.ActiveDocument.SendCommand("_Model ")
-        # wcsCenter = acad.ActiveDocument.Utility.TranslateCoordinates(psCenterPoint, 1, 0, False)
-        # wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1,0, False)
-        # wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
-                            # ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name,
-                    #                                            entity.Width, entity.Height,
-                    #                                            psCenter, wcsCenter, 
-                    #                                            psleftTopCorner, psrightBotCorner,
-            #                                            wcsleftTop, wcsrightBot]
-
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         """
         Checks if three points are collinear.
@@ -385,25 +356,6 @@ class PyHelp():
 
 
     def findViewports(self):
-        def appendToDF(entity):
-            objectID = entity.ObjectID
-            if entity.EntityName == "AcDbViewport" and self.validateViewport(layout, entity):
-                psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
-                                    entity.Center[1] + (abs(entity.Height) / 2))
-                psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
-                                    entity.Center[1] - (abs(entity.Height) / 2))
-                
-                psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-                psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-                vpLine = self.doc.PaperSpace.AddLine(psleftTopCornerPoint, psrightBotCornerPoint)
-                self.doc.SendCommand("select last  chspace  ")
-                ViewportsDF.loc[len(ViewportsDF.index)] = [objectID, layout.Name,
-                                                entity.Width, entity.Height,
-                                                psleftTopCorner, psrightBotCorner,
-                                                (vpLine.StartPoint[0], vpLine.StartPoint[1]), 
-                                                (vpLine.EndPoint[0], vpLine.EndPoint[1])]
-                self.doc.SendCommand("pspace ")
-
         layouts = self.doc.Layouts
         self.doc.ActiveLayer = self.doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
@@ -412,7 +364,7 @@ class PyHelp():
             if layout.Name != "Model":
                 self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
                 print(layout.Name)
-                self.doc.SendCommand("_pspace z a ")
+                self.doc.SendCommand("pspace z a ")
                 entities = layout.Block
                 entitiesCount = entities.Count
                 i, errorCount = 0, 0
@@ -423,7 +375,7 @@ class PyHelp():
                             entity.ViewportOn = False
                             entity.ViewportOn = True
                             time.sleep(0.2)
-                            appendToDF(entity)
+                            vp = vi
                         errorCount = 0
                         i += 1
                     # except Exception as e:
