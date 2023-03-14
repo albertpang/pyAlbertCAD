@@ -42,7 +42,7 @@ class Viewport(Entity):
         self.width = block.Width
         self.sheet = layout.Name
         self.scale = round(block.CustomScale, 3)
-        self.type = None
+        self.type = self.classifyViewport()
         self.crossLine = None
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
@@ -53,14 +53,15 @@ class Viewport(Entity):
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
         self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
+
     
     def classifyViewport(self):
         if self.scale == .25:
-            self.type = "Section View"
+            return "Section View"
         elif self.scale == .05:
-            self.type = "Model View"
+            return "Model View"
         else:
-            self.type = f"Incorrect Scale: {self.scale}"
+            return (f"Incorrect Scale: {self.scale}")
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)

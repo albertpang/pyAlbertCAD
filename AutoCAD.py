@@ -282,7 +282,7 @@ class Sheet:
 class PyHelp():
     def __init__(self) -> None:
         
-        # self.createAlbertLayer()
+        self.createAlbertLayer()
         self.findViewports()
         self.findPaperSheets()
         self.removeAlbertTool()
@@ -430,7 +430,6 @@ def saveDF():
     ViewportsDF.to_csv('ViewportsCSV')
     print("-----Logged to ViewportsCSV")
 
-# removeAlbertTool()
 p = PyHelp()
 saveDF()
 
