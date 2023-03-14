@@ -1,6 +1,5 @@
 import win32com.client
-from win32com.client import constants
-import pythoncom
+# from win32com.client import constants
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -11,6 +10,7 @@ import re
 from entity import Fitting, Line, PolyLine, Text, Viewport
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
+doc = acad.ActiveDocument
 
 class Sheet:
     """
@@ -245,34 +245,39 @@ class Sheet:
         BillOfMaterialsDF['Fitting'] = BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
         BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
+    def assignBlockToSheet(self):
+        def liesWithin(topLeftCorner, botRightCorner, fittingPoint):
+            if (fittingPoint[0] < botRightCorner[0]) and \
+               (fittingPoint[0] > topLeftCorner[0]) and  \
+               (fittingPoint[1] > botRightCorner[1]) and \
+               (fittingPoint[1] < topLeftCorner[1]):
+                return True
+            return False
         
+        FittingsDF['Matching Viewport ID'] = 'N/A'
+        FittingsDF['Matching Viewport Sheet'] = 'N/A'
 
-        # 
-        # self.BillOfMaterialsDF.assign(fittingColumn = 
+        viewportIndex, fittingIndex = 0, 0
+        for viewportIndex in ViewportsDF.index:
+            topLeftCorner = (ViewportsDF['ModelSpace Coordinate TopLeft X'][viewportIndex],
+                             ViewportsDF['ModelSpace Coordinate TopLeft Y'][viewportIndex])
+            botRightCorner = (ViewportsDF['ModelSpace Coordinate BotRight X'][viewportIndex],
+                             ViewportsDF['ModelSpace Coordinate BotRight Y'][viewportIndex])
+            
+            for fittingIndex in FittingsDF.index:
+                fittingPoint = (FittingsDF['Block X'][fittingIndex],
+                                FittingsDF['Block Y'][fittingIndex])
+        
+                if liesWithin(topLeftCorner, botRightCorner, fittingPoint):
+                    FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
+                        ViewportsDF['ID'][viewportIndex]
+                    FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
+                        ViewportsDF['Sheet'][viewportIndex]
 
-
-def purgeZombieEntity():
-    """ -- PROXY Errors due to WINCOM -- Obsolete Code -- """
-    """Delete any zombie AutoCAD entities from the Modelspace.
-
-    The function iterates over all the entities in the Modelspace of the active
-    AutoCAD document and prints their object names to the console. This is useful
-    for identifying any entities that may have been left behind by a program that
-    terminated unexpectedly or otherwise failed to clean up after itself. The 
-    function does not delete any entities.
-
-    Returns:
-    None
-    """
-    i = 0
-    db = acad.ActiveDocument.Modelspace
-   
-    for i in range(db.count):
-        print(db.Item(i).ObjectName)      
 
 class PyHelp():
     def __init__(self) -> None:
-        self.doc = acad.ActiveDocument
+        
         
         self.createAlbertLayer()
         self.findViewports()
@@ -280,22 +285,16 @@ class PyHelp():
         self.removeAlbertTool()
 
     def createAlbertLayer(self):
-        coordinateLayer = self.doc.layers.Add("AlbertToolLayer")
+        coordinateLayer = doc.layers.Add("AlbertToolLayer")
         coordinateLayer.LayerOn
         coordinateLayer.color = 40
 
     def removeAlbertTool(self):
-        print ("Clearing Linework")
-        layouts = self.doc.Layouts
-        for layout in layouts:
-            time.sleep(0.2)
-            self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
-            time.sleep(0.2)
-            if layout.Name != "Model":
-                self.doc.SendCommand("pSPACE ")
-            for entity in self.doc.ActiveLayout.Block:
-                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
-                    entity.Delete()
+        for index, row in LinesDF.iterrows():
+        # Check if the layer of the current row is 'AlbertToolLayer'
+            if row['Layer'] == 'AlbertToolLayer':
+                line = acad.ActiveDocument.ObjectIDtoObject(int(row['ID']))
+                line.Delete()
 
 
     def validateViewport(self, entity, layout,):
@@ -322,15 +321,15 @@ class PyHelp():
 
 
     def findViewports(self):
-        layouts = self.doc.Layouts
-        self.doc.ActiveLayer = self.doc.Layers("AlbertToolLayer")
+        layouts = doc.Layouts
+        doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
         for layout in layouts:
             if layout.Name != "Model":
-                self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
+                doc.ActiveLayout = doc.Layouts(layout.Name)
                 
-                self.doc.SendCommand("pspace z a ")
+                doc.SendCommand("pspace z a ")
                 entities = layout.Block
                 entitiesCount = entities.Count
                 i, errorCount = 0, 0
@@ -385,9 +384,10 @@ class PyHelp():
 
         s.findAssociatedText()
         s.findBillOfMaterials()
+        s.assignBlockToSheet()
 
 
-LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
+LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Layer', 'Start X', 
                                     'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
 FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 
                                 'Block X', 'Block Y', 'Matching Line ID', 
@@ -428,6 +428,5 @@ def saveDF():
 
 # removeAlbertTool()
 p = PyHelp()
-
 saveDF()
 
