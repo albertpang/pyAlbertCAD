@@ -35,13 +35,8 @@ class Sheet:
         A data frame containing information about bill of materials 
         in the current drawing.
     """
-    def __init__(self, layout, linesDF, FittingsDF, TextsDF, BoMDF):
+    def __init__(self, layout ):
         self.__layout = layout
-        self.LinesDF = linesDF
-        self.FittingsDF = FittingsDF
-        self.TextsDF = TextsDF
-        self.BillOfMaterialsDF = BoMDF
-
 
     def findBlocks(self):
         """
@@ -53,14 +48,12 @@ class Sheet:
             Exception: If there is an error while iterating over the entities 
             in the layout.
         """
-        acUtils = acad.Activedocument.Utility
         entities = self.__layout.Block
         entitiesCount = entities.Count 
         i, errorCount = 0, 1
         while i < entitiesCount and errorCount <= 3:
-            if i == (entitiesCount // 2):
-                print ("--- 50% done ---")
-                
+            # if i == (entitiesCount // 2):
+            #     print ("--- 50% done ---")
             try:
                 entity = entities.Item(i)
                 entityObjectName = entity.ObjectName
@@ -69,7 +62,9 @@ class Sheet:
                 if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
                     if entity.Length > 1:
                         l = Line(entity, self.__layout.name, False)
-                        l.appendToDF(self.LinesDF)
+                        LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                                                           l.startX, l.startY, l.endX, 
+                                                           l.endY, l.length, l.slope]
 
                 # Polyline
                 elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
@@ -77,21 +72,22 @@ class Sheet:
                         # If there are only two coordinates, convert Polyline into a line
                         if len(entity.Coordinates) == 4:
                             l = Line(entity, self.__layout.name, True)
-                            l.appendToDF(self.LinesDF)
+                            LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                                                               l.startX, l.startY, l.endX, 
+                                                               l.endY, l.length, l.slope]
                         # Otherwise, it is an authentic Polyline
                         else:
-                            pl = PolyLine(entity, self.__layout.name, self.LinesDF)
-
-                # Dynamic Blocks
+                            pl = PolyLine(entity, self.__layout.name, LinesDF)
                 elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
                     f = Fitting(entity, self.__layout.name)
-                    f.appendToDF(self.FittingsDF)
-        
+                    FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
+                                                             f.locationX, f.locationY, "N/A", "N/A"]
                 # Text Items
                 elif (entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText'):
                     t = Text(entity, self.__layout.name)
-                    t.appendToDF(self.TextsDF)          
-
+                    TextsDF.loc[len(TextsDF.index)] = [t.ID, t.sheet, t.text, 
+                                                       t.locationX, t.locationY, 
+                                                       "N/A", "N/A"]
                 # MLeader Object
                 elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
                     # t = Text(entity, self.__layout.name)
@@ -99,17 +95,11 @@ class Sheet:
                     pass
                 elif entityObjectName == 'AcDbViewport':
                     pass
-
-
-                    
-                else:
-                    pass
-
                 i += 1
 
             except Exception as e:
                 errorCount += 1
-                print(f"Attempt Count: {errorCount}", i, entityObjectName, e)
+                print(f"\tAttempt Count: {errorCount}", i, entityObjectName, e)
     
     
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -158,19 +148,19 @@ class Sheet:
         """
         print("Associating ModelSpace Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
-        for fittingIndex in self.FittingsDF.index:
-            x2 = self.FittingsDF['Block X'][fittingIndex]
-            y2 = self.FittingsDF['Block Y'][fittingIndex]
-            for lineIndex in self.LinesDF.index:
-                x1 = self.LinesDF['Start X'][lineIndex]
-                y1 = self.LinesDF['Start Y'][lineIndex]
-                x3 = self.LinesDF['End X'][lineIndex]
-                y3 = self.LinesDF['End Y'][lineIndex]
+        for fittingIndex in FittingsDF.index:
+            x2 = FittingsDF['Block X'][fittingIndex]
+            y2 = FittingsDF['Block Y'][fittingIndex]
+            for lineIndex in LinesDF.index:
+                x1 = LinesDF['Start X'][lineIndex]
+                y1 = LinesDF['Start Y'][lineIndex]
+                x3 = LinesDF['End X'][lineIndex]
+                y3 = LinesDF['End Y'][lineIndex]
                 if self.isCollinear(x1, y1, x2, y2, x3, y3):
-                    self.FittingsDF.loc[fittingIndex, 'Matching Line ID'] = \
-                        self.LinesDF['ID'][lineIndex]
-                    self.FittingsDF.loc[fittingIndex, 'Matching Line Length'] = \
-                        self.LinesDF['Length'][lineIndex]
+                    FittingsDF.loc[fittingIndex, 'Matching Line ID'] = \
+                        LinesDF['ID'][lineIndex]
+                    FittingsDF.loc[fittingIndex, 'Matching Line Length'] = \
+                        LinesDF['Length'][lineIndex]
     
     
     def findAssociatedText(self):
@@ -186,7 +176,7 @@ class Sheet:
         '''TODO: Divide and Conquer Algorithm'''
 
         print("Associating Texts by Distance")        
-        for sheet_name, group in self.TextsDF.groupby('Sheet'):
+        for sheet_name, group in TextsDF.groupby('Sheet'):
             # Iterate over rows within the current sheet group
             for textIndex in group.index:
                 minDistance = 999
@@ -201,17 +191,17 @@ class Sheet:
                         if distance < minDistance:
                             minDistance = distance
                             minIndex = relativeTextIndex
-                self.TextsDF.loc[textIndex, 'Associated Text ID'] = \
-                    self.TextsDF.loc[minIndex, 'ID']
-                self.TextsDF.loc[textIndex, 'Associated Text String'] = \
-                    self.TextsDF.loc[minIndex, 'Text']
+                TextsDF.loc[textIndex, 'Associated Text ID'] = \
+                    TextsDF.loc[minIndex, 'ID']
+                TextsDF.loc[textIndex, 'Associated Text String'] = \
+                    TextsDF.loc[minIndex, 'Text']
 
-        for textIndex in self.TextsDF.index:
-            if ("DUCTILE" in self.TextsDF.loc[textIndex, 'Associated Text String'] and 
-                "'" in self.TextsDF.loc[textIndex, 'Text']):
-                print(f"{self.TextsDF['Sheet'][textIndex]} : "
-                      f"{self.TextsDF['Text'][textIndex]} of "
-                      f"{self.TextsDF['Associated Text String'][textIndex]}")
+        for textIndex in TextsDF.index:
+            if ("DUCTILE" in TextsDF.loc[textIndex, 'Associated Text String'] and 
+                "'" in TextsDF.loc[textIndex, 'Text']):
+                print(f"{TextsDF['Sheet'][textIndex]} : "
+                      f"{TextsDF['Text'][textIndex]} of "
+                      f"{TextsDF['Associated Text String'][textIndex]}")
 
 
     def findBillOfMaterials(self):  
@@ -229,64 +219,38 @@ class Sheet:
         None
         """
         def format():
-            self.BillOfMaterialsDF['Associated Text String'] =            \
-                self.BillOfMaterialsDF['Associated Text String'].apply    \
+            BillOfMaterialsDF['Associated Text String'] =            \
+                BillOfMaterialsDF['Associated Text String'].apply    \
                 (lambda x: re.sub(r'\\A1;', '', x))
-            self.BillOfMaterialsDF['Associated Text String'] =            \
-                self.BillOfMaterialsDF['Associated Text String'].apply    \
+            BillOfMaterialsDF['Associated Text String'] =            \
+                BillOfMaterialsDF['Associated Text String'].apply    \
                 (lambda x: re.sub(r'\\P', ',', x)).str.replace("\t", "-")
-            self.BillOfMaterialsDF.drop(['Sheet #'], axis=1, inplace= True)
-            
-            
-            
-            self.BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
+            BillOfMaterialsDF.drop(['Sheet #'], axis=1, inplace= True)
+            BillOfMaterialsDF['Associated Text String'].apply(lambda x: x[1:].split(","))
 
         print("\nFinding Bill of Materials")
         BillOfMaterialsFilter = \
-            self.TextsDF['Text'].str.contains('BILL OF MATERIALS')
-        self.BillOfMaterialsDF = \
-            self.TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
-        self.BillOfMaterialsDF['Sheet #'] = \
-            self.BillOfMaterialsDF['Sheet'].apply(lambda x: int(re.sub(r'\D', '', str(x))))
-        self.BillOfMaterialsDF.sort_values("Sheet #", inplace=True)
+            TextsDF['Text'].str.contains('BILL OF MATERIALS')
+        BillOfMaterialsDF = \
+            TextsDF.loc[BillOfMaterialsFilter, ['Sheet', 'Associated Text String']]
+        BillOfMaterialsDF['Sheet #'] = \
+            BillOfMaterialsDF['Sheet'].apply(lambda x: int(re.sub(r'\D', '', str(x))))
+        BillOfMaterialsDF.sort_values("Sheet #", inplace=True)
         format()
 
         fittingColumn = 'Associated Text String'
-        self.BillOfMaterialsDF['Fitting List'] = self.BillOfMaterialsDF[fittingColumn].str.split(',')
-        self.BillOfMaterialsDF = self.BillOfMaterialsDF.explode('Fitting List')
-        self.BillOfMaterialsDF['Quantity'] = self.BillOfMaterialsDF['Fitting List'].str.split('-').str[0]
-        self.BillOfMaterialsDF['Fitting'] = self.BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
-        self.BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
+        BillOfMaterialsDF['Fitting List'] = BillOfMaterialsDF[fittingColumn].str.split(',')
+        BillOfMaterialsDF = BillOfMaterialsDF.explode('Fitting List')
+        BillOfMaterialsDF['Quantity'] = BillOfMaterialsDF['Fitting List'].str.split('-').str[0]
+        BillOfMaterialsDF['Fitting'] = BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
+        BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
         
 
         # 
         # self.BillOfMaterialsDF.assign(fittingColumn = 
 
-        
-    def saveDF(self):
-        """Save the DataFrame objects to CSV files.
 
-        The function saves each of the four DataFrame objects to a separate CSV file.
-        The file names are hardcoded as 'LinesCSV', 'FittingsCSV', 'TextsCSV', and
-        'BillOfMaterialsCSV', respectively. The function logs a message to the console
-        after each file is saved to indicate which DataFrame object was saved.
-
-        Returns:
-        None
-        """
-        print("Saving CSVs")
-        self.LinesDF.to_csv('LinesCSV')
-        print("-Logged to Lines")
-        self.FittingsDF.to_csv('FittingsCSV')
-        print("--Logged to Fittings")
-        self.TextsDF.to_csv('TextsCSV')
-        print("---Logged to Texts")
-        self.BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
-        print("----Logged to BOM")
-        ViewportsDF.to_csv('ViewportsCSV')
-
-    
 def purgeZombieEntity():
     """ -- PROXY Errors due to WINCOM -- Obsolete Code -- """
     """Delete any zombie AutoCAD entities from the Modelspace.
@@ -309,10 +273,11 @@ def purgeZombieEntity():
 class PyHelp():
     def __init__(self) -> None:
         self.doc = acad.ActiveDocument
+        
         self.createAlbertLayer()
         self.findViewports()
-        self.findPaperSheets(LinesDF, FittingsDF, TextsDF)
-
+        self.findPaperSheets()
+        self.removeAlbertTool()
 
     def createAlbertLayer(self):
         coordinateLayer = self.doc.layers.Add("AlbertToolLayer")
@@ -320,19 +285,20 @@ class PyHelp():
         coordinateLayer.color = 40
 
     def removeAlbertTool(self):
-            layouts = self.doc.Layouts
-            for layout in layouts:
-                if layout.Name != "Model":
-                    print(layout.Name)
-                    self.doc.SendCommand("pSPACE ")
-                    time.sleep(1)
-                    self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
-                    time.sleep(1)
-                    for entity in self.doc.ActiveLayout.Block:
-                        if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
-                            entity.Delete()
+        print ("Clearing Linework")
+        layouts = self.doc.Layouts
+        for layout in layouts:
+            time.sleep(0.2)
+            self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
+            time.sleep(0.2)
+            if layout.Name != "Model":
+                self.doc.SendCommand("pSPACE ")
+            for entity in self.doc.ActiveLayout.Block:
+                if entity.EntityName == "AcDbLine" and entity.Layer == "AlbertToolLayer":
+                    entity.Delete()
 
-    def validateViewport(self, layout, entity):
+
+    def validateViewport(self, entity, layout,):
         # Fits within the bounds of the page
         def isViewPortSize(layout, entity):
             PIXELtoINCH = 25.4
@@ -359,42 +325,42 @@ class PyHelp():
         layouts = self.doc.Layouts
         self.doc.ActiveLayer = self.doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
-
+        print("Finding Viewports")
         for layout in layouts:
             if layout.Name != "Model":
                 self.doc.ActiveLayout = self.doc.Layouts(layout.Name)
-                print(layout.Name)
+                
                 self.doc.SendCommand("pspace z a ")
                 entities = layout.Block
                 entitiesCount = entities.Count
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                    # try:
-                        entity = entities.Item(i)     
-                        if entity.EntityName == "AcDbViewport" and self.validateViewport(layout, entity):
+                    try:
+                        entity = entities.Item(i)  
+                        if entity.EntityName == "AcDbViewport" and self.validateViewport(entity, layout):
                             entity.ViewportOn = False
                             entity.ViewportOn = True
-                            time.sleep(0.2)
-                            vp = vi
+                            vp = Viewport(entity, layout)
+                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, 
+                                                                       vp.width, vp.height,
+                                                                       vp.psLeftTopCorner[0], vp.psLeftTopCorner[1],
+                                                                       vp.psRightBotCorner[0], vp.psRightBotCorner[1],
+                                                                       vp.msLeftTopCorner[0], vp.msLeftTopCorner[1], 
+                                                                       vp.msRightBotCorner[0], vp.msRightBotCorner[1]]
                         errorCount = 0
                         i += 1
-                    # except Exception as e:
-                    #     errorCount += 1
-                    #     try:
-                    #         self.vpLine.Delete()
-                    #         print("Line Deleted")
-                    #     except:
-                    #         pass
-                    #     time.sleep(0.5)
-                    #     print(f"Attempt Count: {errorCount}", e)
+                    except Exception as e:
+                        errorCount += 1
+                        time.sleep(0.5)
+                        print(f"\tAttempt Count: {errorCount}", e)
 
 
-    def findPaperSheets(self, linesDF, FittingsDF, TextsDF):
-        skipModelSpace = True
+    def findPaperSheets(self):
+        # , linesDF, FittingsDF, TextsDF
+        skipModelSpace = False
         inModelSpace = True
-
+        print("Finding Blocks")
         for layout in acad.activeDocument.layouts:
-            print(layout.Name)
             # Skip Model Space
             if skipModelSpace:
                 # On Model Space Sheet
@@ -403,23 +369,22 @@ class PyHelp():
                     continue
                 # Any Paper Sheet
                 else:
-                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s = Sheet(layout)
                     s.findBlocks()
             # Don't Skip Model Space
             else:
                 if inModelSpace:
-                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s = Sheet(layout)
                     s.findBlocks()
                     s.findFittingSize()
                     inModelSpace = False
                     continue
                 else:
-                    s = Sheet(layout, linesDF, FittingsDF, TextsDF, BillOfMaterialsDF)
+                    s = Sheet(layout)
                     s.findBlocks()
 
         s.findAssociatedText()
         s.findBillOfMaterials()
-        s.saveDF()
 
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 'Start X', 
@@ -429,10 +394,40 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
-BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 
-                                    'ModelSpace Coordinate TopLeft', 'PaperSpace Coordinate BotRight',
-                                    'ModelSpace Coordinate TopLeft', 'ModelSpace Coordinate BotRight'])
+                            'PaperSpace Coordinate TopLeft X', 'PaperSpace Coordinate TopLeft Y',
+                            'PaperSpace Coordinate BotRight X', 'PaperSpace Coordinate BotRight Y',
+                            'ModelSpace Coordinate TopLeft X', 'ModelSpace Coordinate TopLeft Y',
+                            'ModelSpace Coordinate BotRight X', 'ModelSpace Coordinate BotRight Y'
+                            ])
+
+BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
+
+def saveDF():
+    """Save the DataFrame objects to CSV files.
+
+    The function saves each of the four DataFrame objects to a separate CSV file.
+    The file names are hardcoded as 'LinesCSV', 'FittingsCSV', 'TextsCSV', and
+    'BillOfMaterialsCSV', respectively. The function logs a message to the console
+    after each file is saved to indicate which DataFrame object was saved.
+
+    Returns:
+    None
+    """
+    print("Saving CSVs")
+    LinesDF.to_csv('LinesCSV')
+    print("-Logged to Lines")
+    FittingsDF.to_csv('FittingsCSV')
+    print("--Logged to Fittings")
+    TextsDF.to_csv('TextsCSV')
+    print("---Logged to Texts")
+    BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
+    print("----Logged to BOM")
+    ViewportsDF.to_csv('ViewportsCSV')
+    print("-----Logged to ViewportsCSV")
+
 # removeAlbertTool()
 p = PyHelp()
+
+saveDF()
 
