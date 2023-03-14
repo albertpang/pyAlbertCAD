@@ -246,40 +246,43 @@ class Sheet:
         BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
     def assignBlockToSheet(self):
-        def liesWithin(topLeftCorner, botRightCorner, fittingPoint):
-            if (fittingPoint[0] < botRightCorner[0]) and \
-               (fittingPoint[0] > topLeftCorner[0]) and  \
-               (fittingPoint[1] > botRightCorner[1]) and \
-               (fittingPoint[1] < topLeftCorner[1]):
-                return True
-            return False
+        def liesWithin(c1, c2, fittingPoint):
+            x, y = fittingPoint
+            minX = min(c1[0], c2[0])
+            maxX = max(c1[0], c2[0])
+            minY = min(c1[1], c2[1])
+            maxY = max(c1[1], c2[1])
+            insideX = (minX <= x <= maxX)
+            insideY = (minY <= y <= maxY)
+            return (insideX and insideY)
         
         FittingsDF['Matching Viewport ID'] = 'N/A'
         FittingsDF['Matching Viewport Sheet'] = 'N/A'
 
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
-            topLeftCorner = (ViewportsDF['ModelSpace Coordinate TopLeft X'][viewportIndex],
-                             ViewportsDF['ModelSpace Coordinate TopLeft Y'][viewportIndex])
-            botRightCorner = (ViewportsDF['ModelSpace Coordinate BotRight X'][viewportIndex],
-                             ViewportsDF['ModelSpace Coordinate BotRight Y'][viewportIndex])
+            corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
+                             ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
+            corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
+                             ViewportsDF['ModelSpace Coordinate Corner2 Y'][viewportIndex])
             
             for fittingIndex in FittingsDF.index:
                 fittingPoint = (FittingsDF['Block X'][fittingIndex],
                                 FittingsDF['Block Y'][fittingIndex])
-        
-                if liesWithin(topLeftCorner, botRightCorner, fittingPoint):
-                    FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
-                        ViewportsDF['ID'][viewportIndex]
-                    FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
-                        ViewportsDF['Sheet'][viewportIndex]
+                if FittingsDF['Sheet'][fittingIndex] == 'Model':
+                    if liesWithin(corner1, corner2, fittingPoint):
+                        FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
+                            ViewportsDF['ID'][viewportIndex]
+                        FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
+                            ViewportsDF['Sheet'][viewportIndex]
+                else:
+                    continue
 
 
 class PyHelp():
     def __init__(self) -> None:
         
-        
-        self.createAlbertLayer()
+        # self.createAlbertLayer()
         self.findViewports()
         self.findPaperSheets()
         self.removeAlbertTool()
@@ -290,6 +293,7 @@ class PyHelp():
         coordinateLayer.color = 40
 
     def removeAlbertTool(self):
+        print("Removing Albert's Calculation Linework")
         for index, row in LinesDF.iterrows():
         # Check if the layer of the current row is 'AlbertToolLayer'
             if row['Layer'] == 'AlbertToolLayer':
@@ -307,12 +311,12 @@ class PyHelp():
             return (entity.Height < height and entity.Width < width)
         # Starts and ends within the bounds of the page
         def isWithinPage(entity):
-            psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), 
+            corner1 = (entity.Center[0] - (abs(entity.Width) / 2), 
                                 entity.Center[1] + (abs(entity.Height) / 2))
-            psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), 
+            corner2 = (entity.Center[0] + (abs(entity.Width) / 2), 
                                 entity.Center[1] - (abs(entity.Height) / 2))
-            if (psleftTopCorner[0] > 0 and psleftTopCorner[1]  > 0 and 
-                psrightBotCorner[0] > 0 and psrightBotCorner[1] > 0):
+            if (corner1[0] > 0 and corner1[1]  > 0 and 
+                corner2[0] > 0 and corner2[1] > 0):
                 return True
             else:
                 return False
@@ -341,11 +345,11 @@ class PyHelp():
                             entity.ViewportOn = True
                             vp = Viewport(entity, layout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, 
-                                                                       vp.width, vp.height,
-                                                                       vp.psLeftTopCorner[0], vp.psLeftTopCorner[1],
-                                                                       vp.psRightBotCorner[0], vp.psRightBotCorner[1],
-                                                                       vp.msLeftTopCorner[0], vp.msLeftTopCorner[1], 
-                                                                       vp.msRightBotCorner[0], vp.msRightBotCorner[1]]
+                                                                       vp.width, vp.height, vp.type,
+                                                                       vp.psCorner1[0], vp.psCorner1[1],
+                                                                       vp.psCorner2[0], vp.psCorner2[1],
+                                                                       vp.msCorner1[0], vp.msCorner1[1], 
+                                                                       vp.msCorner2[0], vp.msCorner2[1]]
                         errorCount = 0
                         i += 1
                     except Exception as e:
@@ -394,11 +398,11 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 
-                            'PaperSpace Coordinate TopLeft X', 'PaperSpace Coordinate TopLeft Y',
-                            'PaperSpace Coordinate BotRight X', 'PaperSpace Coordinate BotRight Y',
-                            'ModelSpace Coordinate TopLeft X', 'ModelSpace Coordinate TopLeft Y',
-                            'ModelSpace Coordinate BotRight X', 'ModelSpace Coordinate BotRight Y'
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type',
+                            'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
+                            'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
+                            'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
+                            'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
                             ])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])

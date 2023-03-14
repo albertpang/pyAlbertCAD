@@ -41,26 +41,35 @@ class Viewport(Entity):
         self.height = block.Height
         self.width = block.Width
         self.sheet = layout.Name
+        self.scale = round(block.CustomScale, 3)
+        self.type = None
         self.crossLine = None
-        self.psLeftTopCorner = (self.center[0] - (abs(self.width) / 2), 
+        self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
-        self.psRightBotCorner = (self.center[0] + (abs(self.width) / 2), 
+        self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
         
         # Create AutoCAD Point object
-        psleftTopCornerPoint = APoint(self.psLeftTopCorner[0], self.psLeftTopCorner[1])
-        psrightBotCornerPoint = APoint(self.psRightBotCorner[0], self.psRightBotCorner[1])
-        self.convertLinePaperSpace(psleftTopCornerPoint, psrightBotCornerPoint)
+        psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
+        psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
+        self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
     
+    def classifyViewport(self):
+        if self.scale == .25:
+            self.type = "Section View"
+        elif self.scale == .05:
+            self.type = "Model View"
+        else:
+            self.type = f"Incorrect Scale: {self.scale}"
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
         doc.SendCommand("select last  chspace  ")
-        self.msLeftTopCorner = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1]) 
-        self.msRightBotCorner = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
+        self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
+        self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
         doc.SendCommand("pspace ")
 
-    # TranslateCoordinates Method -- Does Not Work
+    # TranslateCoordinates Method -- Does Not Work as it will assume each viewport is the same
         # def translateCoordinates(self):
             # tp = APoint(18.50201834, 17.10606439)
             # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 2, 0, False))
