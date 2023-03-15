@@ -323,6 +323,11 @@ class PyHelp():
             
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
+    def count_frozen_layer(self):
+        frozenLayerCount = 0
+        for layer in doc.layers:
+            print(layer.Frozen)
+
 
     def findViewports(self):
         layouts = doc.Layouts
