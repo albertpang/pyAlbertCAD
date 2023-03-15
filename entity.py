@@ -84,31 +84,6 @@ class Viewport(Entity):
         print(self.frozenLayerCount)
         doc.SendCommand("pspace ")
 
-    # TranslateCoordinates Method -- Does Not Work as it will assume each viewport is the same
-        # def translateCoordinates(self):
-            # tp = APoint(18.50201834, 17.10606439)
-            # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 2, 0, False))
-            # "2706723.25739601, 270394.52176793"
-
-            # psCenter = (entity.Center[0], entity.Center[1])
-            # psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
-            # psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
-            
-            # psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-            # psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-            # psCenterPoint = APoint(entity.Center[0], entity.Center[1])
-
-            # # Translate Coordinates only works when in Model Space
-            # acad.ActiveDocument.SendCommand("_Model ")
-            # wcsCenter = acad.ActiveDocument.Utility.TranslateCoordinates(psCenterPoint, 1, 0, False)
-            # wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1,0, False)
-            # wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
-                                # ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name,
-                        #                                            entity.Width, entity.Height,
-                        #                                            psCenter, wcsCenter, 
-                        #                                            psleftTopCorner, psrightBotCorner,
-                #                                            wcsleftTop, wcsrightBot]
-
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
         self.ID = block.ObjectID
