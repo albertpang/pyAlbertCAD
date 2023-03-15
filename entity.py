@@ -41,6 +41,8 @@ class Viewport(Entity):
         self.height = block.Height
         self.width = block.Width
         self.sheet = layout.Name
+        self.isMain = None
+        self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
         self.scale = round(block.CustomScale, 3)
         self.type = None
         self.crossLine = None
@@ -53,12 +55,45 @@ class Viewport(Entity):
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
         self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
-    
+        self.classifyViewport()
+
+
+    def isModelSpaceViewport(self):
+        def isShowingMoreLayers():
+            frozenLayerCount = 0
+            for layer in acad.doc.layers:
+                layerName = layer.Name
+                isFrozen = layer.Frozen
+
+        # def isCenterViewport():
+        #     def liesWithin(cp, c1, c2):
+        #         x, y = cp
+        #         minX = min(c1[0], c2[0])
+        #         maxX = max(c1[0], c2[0])
+        #         minY = min(c1[1], c2[1])
+        #         maxY = max(c1[1], c2[1])
+        #         insideX = (minX <= x <= maxX)
+        #         insideY = (minY <= y <= maxY)
+        #         return (insideX and insideY)
+        #     PIXELtoINCH = 25.4
+        #     self.sheetHeight /= PIXELtoINCH
+        #     self.sheetWidth /= PIXELtoINCH
+        #     layoutCenter = (self.sheetHeight / 2), (self.sheetWidth / 2)
+        #     return liesWithin(layoutCenter, self.psCorner1, self.psCorner2)
+
+
     def classifyViewport(self):
         if self.scale == .25:
             self.type = "Section View"
+            self.isMain = 'Not Applicable'
+
         elif self.scale == .05:
-            self.type = "Model View"
+            self.type = "Model View"            
+            if self.isCenterViewport():
+                self.isMain = 'TRUE'
+            else:
+                self.isMain = 'FALSE'
+            
         else:
             self.type = f"Incorrect Scale: {self.scale}"
     
