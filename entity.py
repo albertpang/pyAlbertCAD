@@ -82,7 +82,7 @@ class Viewport(Entity):
             if (layer.Freeze == True):
                 self.frozenLayerCount += 1
         print(self.frozenLayerCount)
-        doc.SendCommand("pspace ")
+        doc.SendCommand("pspace ") 
 
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
