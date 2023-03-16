@@ -68,7 +68,22 @@ class Viewport(Entity):
         for data in self.XData[0]:
             self.numFrozenLayers += 1
         return self.numFrozenLayers
-            
+    
+    def is_center_viewport(self):
+        def liesWithin(cp, c1, c2):
+            x, y = cp
+            minX = min(c1[0], c2[0])
+            maxX = max(c1[0], c2[0])
+            minY = min(c1[1], c2[1])
+            maxY = max(c1[1], c2[1])
+            insideX = (minX <= x <= maxX)
+            insideY = (minY <= y <= maxY)
+            return (insideX and insideY)
+        PIXELtoINCH = 25.4
+        self.sheetHeight /= PIXELtoINCH
+        self.sheetWidth /= PIXELtoINCH
+        layoutCenter = (self.sheetHeight / 2), (self.sheetWidth / 2)
+        return liesWithin(layoutCenter, self.psCorner1, self.psCorner2)
 
     def classify_viewport(self):
         if self.scale == .25:
@@ -77,10 +92,10 @@ class Viewport(Entity):
 
         elif self.scale == .05:
             self.type = "Model View"
-            # if
-            self.isMain = 'TRUE'
-            # else:
-            self.isMain = 'FALSE'
+            if self.is_center_viewport():
+                self.isMain = 'TRUE'
+            else:
+                self.isMain = 'FALSE'
             
         else:
             return (f"Incorrect Scale: {self.scale}")
