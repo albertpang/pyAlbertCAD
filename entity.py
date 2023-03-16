@@ -41,9 +41,12 @@ class Viewport(Entity):
         self.height = block.Height
         self.width = block.Width
         self.sheet = layout.Name
+        self.isMain = None
+        self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
         self.scale = round(block.CustomScale, 3)
         self.type = self.classifyViewport()
         self.crossLine = None
+        self.frozenLayerCount = 0
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
@@ -53,13 +56,20 @@ class Viewport(Entity):
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
         self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
+        self.classify_viewport()
 
-    
-    def classifyViewport(self):
+    def classify_viewport(self):
         if self.scale == .25:
-            return "Section View"
+            self.type = "Section View"
+            self.isMain = 'Not Applicable'
+
         elif self.scale == .05:
-            return "Model View"
+            self.type = "Model View"            
+            # if self.isCenterViewport():
+            self.isMain = 'TRUE'
+            # else:
+            self.isMain = 'FALSE'
+            
         else:
             return (f"Incorrect Scale: {self.scale}")
     
@@ -68,32 +78,11 @@ class Viewport(Entity):
         doc.SendCommand("select last  chspace  ")
         self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
         self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
-        doc.SendCommand("pspace ")
-
-    # TranslateCoordinates Method -- Does Not Work as it will assume each viewport is the same
-        # def translateCoordinates(self):
-            # tp = APoint(18.50201834, 17.10606439)
-            # print(acad.ActiveDocument.Utility.TranslateCoordinates(tp, 2, 0, False))
-            # "2706723.25739601, 270394.52176793"
-
-            # psCenter = (entity.Center[0], entity.Center[1])
-            # psleftTopCorner = (entity.Center[0] - (abs(entity.Width) / 2), entity.Center[1] + (abs(entity.Height) / 2))
-            # psrightBotCorner = (entity.Center[0] + (abs(entity.Width) / 2), entity.Center[1] - (abs(entity.Height) / 2))
-            
-            # psleftTopCornerPoint = APoint(psleftTopCorner[0], psleftTopCorner[1])
-            # psrightBotCornerPoint = APoint(psrightBotCorner[0], psrightBotCorner[1])
-            # psCenterPoint = APoint(entity.Center[0], entity.Center[1])
-
-            # # Translate Coordinates only works when in Model Space
-            # acad.ActiveDocument.SendCommand("_Model ")
-            # wcsCenter = acad.ActiveDocument.Utility.TranslateCoordinates(psCenterPoint, 1, 0, False)
-            # wcsleftTop = acad.ActiveDocument.Utility.TranslateCoordinates(psleftTopCornerPoint, 1,0, False)
-            # wcsrightBot = acad.ActiveDocument.Utility.TranslateCoordinates(psrightBotCornerPoint, 1, 0, False)
-                                # ViewportsDF.loc[len(ViewportsDF.index)] = [entity.ObjectID, self.__layout.name,
-                        #                                            entity.Width, entity.Height,
-                        #                                            psCenter, wcsCenter, 
-                        #                                            psleftTopCorner, psrightBotCorner,
-                #                                            wcsleftTop, wcsrightBot]
+        for layer in doc.Layers:
+            if (layer.Freeze == True):
+                self.frozenLayerCount += 1
+        print(self.frozenLayerCount)
+        doc.SendCommand("pspace ") 
 
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):

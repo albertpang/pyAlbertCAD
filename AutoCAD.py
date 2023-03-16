@@ -258,30 +258,30 @@ class Sheet:
         
         FittingsDF['Matching Viewport ID'] = 'N/A'
         FittingsDF['Matching Viewport Sheet'] = 'N/A'
+        FittingsDF['Main ModelSpace Viewport'] = 'N/A'
 
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
-            corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
-                             ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
-            corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
-                             ViewportsDF['ModelSpace Coordinate Corner2 Y'][viewportIndex])
-            
-            for fittingIndex in FittingsDF.index:
-                fittingPoint = (FittingsDF['Block X'][fittingIndex],
-                                FittingsDF['Block Y'][fittingIndex])
-                if FittingsDF['Sheet'][fittingIndex] == 'Model':
-                    if liesWithin(corner1, corner2, fittingPoint):
-                        FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
-                            ViewportsDF['ID'][viewportIndex]
-                        FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
-                            ViewportsDF['Sheet'][viewportIndex]
-                else:
-                    continue
+            if ViewportsDF['isMain'][viewportIndex] == "TRUE":
+                corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
+                corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner2 Y'][viewportIndex])
+                for fittingIndex in FittingsDF.index:
+                    fittingPoint = (FittingsDF['Block X'][fittingIndex],
+                                    FittingsDF['Block Y'][fittingIndex])
+                    if FittingsDF['Sheet'][fittingIndex] == 'Model':
+                        if liesWithin(corner1, corner2, fittingPoint):
+                            FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
+                                ViewportsDF['ID'][viewportIndex]
+                            FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
+                                ViewportsDF['Sheet'][viewportIndex]
+                    else:
+                        continue
 
 
 class PyHelp():
     def __init__(self) -> None:
-        
         self.createAlbertLayer()
         self.findViewports()
         self.findPaperSheets()
@@ -323,6 +323,11 @@ class PyHelp():
             
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
+    def count_frozen_layer(self):
+        frozenLayerCount = 0
+        for layer in doc.layers:
+            print(layer.Frozen)
+
 
     def findViewports(self):
         layouts = doc.Layouts
@@ -332,7 +337,7 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 doc.ActiveLayout = doc.Layouts(layout.Name)
-                
+                time.sleep(0.5)
                 doc.SendCommand("pspace z a ")
                 entities = layout.Block
                 entitiesCount = entities.Count
@@ -344,14 +349,15 @@ class PyHelp():
                             entity.ViewportOn = False
                             entity.ViewportOn = True
                             vp = Viewport(entity, layout)
-                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, 
-                                                                       vp.width, vp.height, vp.type,
+                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
+                                                                       vp.height, vp.type, vp.isMain, 
                                                                        vp.psCorner1[0], vp.psCorner1[1],
                                                                        vp.psCorner2[0], vp.psCorner2[1],
                                                                        vp.msCorner1[0], vp.msCorner1[1], 
                                                                        vp.msCorner2[0], vp.msCorner2[1]]
                         errorCount = 0
                         i += 1
+
                     except Exception as e:
                         errorCount += 1
                         time.sleep(0.5)
@@ -398,7 +404,7 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
                                 'Associated Text ID', 'Associated Text String'])        
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type',
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'isMain',
                             'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
                             'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
                             'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
