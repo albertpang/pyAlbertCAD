@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 import math
 import win32com.client
@@ -36,6 +37,7 @@ class Text(Entity):
 
 class Viewport(Entity):
     def __init__(self, block, layout):
+        time.sleep(0.5)
         self.ID = block.ObjectID
         self.center = block.Center
         self.height = block.Height
@@ -44,7 +46,7 @@ class Viewport(Entity):
         self.isMain = None
         self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
         self.scale = round(block.CustomScale, 3)
-        self.type = self.classifyViewport()
+        self.type = self.classify_viewport()
         self.crossLine = None
         self.frozenLayerCount = 0
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
@@ -75,11 +77,27 @@ class Viewport(Entity):
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
+        time.sleep(0.2)
         doc.SendCommand("select last  chspace  ")
+        time.sleep(0.2)
         self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
         self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
+
         for layer in doc.Layers:
-            if (layer.Freeze == True):
+            # (layer.Freeze == True) and 
+            if layer.Name == 'C-PR-WATER':
+                try:
+                    x = 0
+                    y = 0
+                    extraStats = (layer.GetXData("", x, y))
+                    # vpfreeze_xdata = next((x[1] for x in extraStats if x[0] == 1000), None)
+
+                    # # Get the VPFreeze property value (assuming it's stored as a string)
+                    # vpfreeze = bool(vpfreeze_xdata) and vpfreeze_xdata.lower() == "true"
+                    print("VP Thaw")
+                except:
+                    print("VP Freeze")
+                print(layer.Name)
                 self.frozenLayerCount += 1
         print(self.frozenLayerCount)
         doc.SendCommand("pspace ") 

@@ -301,7 +301,7 @@ class PyHelp():
                 line.Delete()
 
 
-    def validateViewport(self, entity, layout,):
+    def validateViewport(self, entity, layout):
         # Fits within the bounds of the page
         def isViewPortSize(layout, entity):
             PIXELtoINCH = 25.4
@@ -337,15 +337,15 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 doc.ActiveLayout = doc.Layouts(layout.Name)
-                time.sleep(0.5)
-                doc.SendCommand("pspace z a ")
+                doc.SendCommand("pspace z a  ")
                 entities = layout.Block
                 entitiesCount = entities.Count
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
-                        entity = entities.Item(i)  
-                        if entity.EntityName == "AcDbViewport" and self.validateViewport(entity, layout):
+                        entity = entities.Item(i)
+                        entityName = entity.EntityName
+                        if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
                             entity.ViewportOn = False
                             entity.ViewportOn = True
                             vp = Viewport(entity, layout)
