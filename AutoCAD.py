@@ -11,6 +11,24 @@ from entity import Fitting, Line, PolyLine, Text, Viewport
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
 
+LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Layer', 'Start X', 
+                                    'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
+FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 
+                                'Block X', 'Block Y', 'Matching Line ID', 
+                                'Matching Line Length'])
+TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
+                                'Associated Text ID', 'Associated Text String'])
+        
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'Overlaps Center', 
+                                    'Num of Frozen Layers', 'Is BasePlan ModelSpace',
+                                    'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
+                                    'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
+                                    'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
+                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
+                                    ])
+
+BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
+
 class Sheet:
     """
     Initialize the Sheet object with layout, lines data frame, 
@@ -247,7 +265,7 @@ class Sheet:
 
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
-            if ViewportsDF['isMain'][viewportIndex] == "TRUE":
+            if ViewportsDF['Is BasePlan ModelSpace'][viewportIndex] == True:
                 corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
                 corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
@@ -316,6 +334,7 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 doc.ActiveLayout = doc.Layouts(layout.Name)
+                time.sleep(2)
                 doc.SendCommand("pspace z a  ")
                 entities = layout.Block
                 entitiesCount = entities.Count
@@ -329,20 +348,35 @@ class PyHelp():
                             entity.ViewportOn = True
                             vp = Viewport(entity, layout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
-                                                                       vp.height, vp.type, vp.isMain,
-                                                                       vp.numFrozenLayers,
+                                                                       vp.height, vp.type, vp.isCenter,
+                                                                       vp.numFrozenLayers, False,
                                                                        vp.psCorner1[0], vp.psCorner1[1],
                                                                        vp.psCorner2[0], vp.psCorner2[1],
                                                                        vp.msCorner1[0], vp.msCorner1[1], 
                                                                        vp.msCorner2[0], vp.msCorner2[1]]
-                        errorCount = 0
+                            # Group by Sheet and find the Viewport with the fewest frozen layer
+                            errorCount = 0
                         i += 1
 
                     except Exception as e:
                         errorCount += 1
                         time.sleep(0.5)
                         print(f"\tAttempt Count: {errorCount}", e)
+        self.sortViewportDF()
 
+    def sortViewportDF(self):
+        _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"]
+        indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
+        print (_msViewportDF)
+        print (indexMinList)
+        for index in indexMinList:
+            print(index)
+            print(id)
+            id = _msViewportDF['ID'].iloc[index]
+
+            ViewportsDF.loc[ViewportsDF['ID'] == id, 'Is BasePlan ModelSpace'] = True
+            print("marked")
+        
 
     def findPaperSheets(self):
         # , linesDF, FittingsDF, TextsDF
@@ -376,24 +410,6 @@ class PyHelp():
         s.findBillOfMaterials()
         s.assignBlockToSheet()
 
-
-LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Layer', 'Start X', 
-                                    'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
-FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description', 
-                                'Block X', 'Block Y', 'Matching Line ID', 
-                                'Matching Line Length'])
-TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
-                                'Associated Text ID', 'Associated Text String'])
-        
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'isMain', 
-                                    'Num of Frozen Layers',
-                                    'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
-                                    'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
-                                    'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
-                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
-                                    ])
-
-BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
 def saveDF():
     """Save the DataFrame objects to CSV files.

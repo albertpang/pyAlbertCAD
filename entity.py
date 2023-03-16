@@ -37,7 +37,8 @@ class Text(Entity):
 
 class Viewport(Entity):
     def __init__(self, block, layout):
-        time.sleep(0.5)
+        # time.sleep(0.5)
+        
         self.ID = block.ObjectID
         self.center = block.Center
         self.height = block.Height
@@ -45,22 +46,22 @@ class Viewport(Entity):
         self.XData = block.GetXData("")
         self.sheet = layout.Name
         self.numFrozenLayers = self.count_frozen_layers()
-        self.isMain = None
         self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
         self.scale = round(block.CustomScale, 3)
-        self.type = self.classify_viewport()
         self.crossLine = None
-
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
         
+        self.isCenter = self.is_center_viewport()
+        self.type = self.classify_viewport()       
+
+        
         # Create AutoCAD Point object
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
         self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
-        self.classify_viewport()
 
     def count_frozen_layers(self):
         """ Uses block.getXData() to count all "Freeze VP" Layers """
@@ -87,16 +88,9 @@ class Viewport(Entity):
 
     def classify_viewport(self):
         if self.scale == .25:
-            self.type = "Section View"
-            self.isMain = 'Not Applicable'
-
+            return "Section View"
         elif self.scale == .05:
-            self.type = "Model View"
-            if self.is_center_viewport():
-                self.isMain = 'TRUE'
-            else:
-                self.isMain = 'FALSE'
-            
+            return "Model View"            
         else:
             return (f"Incorrect Scale: {self.scale}")
     
