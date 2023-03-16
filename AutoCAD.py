@@ -327,14 +327,18 @@ class PyHelp():
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
     def findViewports(self):
+        # If this is the first sheet, AutoCAD needs to go slow
+        boolFirstSlow = True
         layouts = doc.Layouts
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
         for layout in layouts:
             if layout.Name != "Model":
+                if boolFirstSlow:
+                    time.sleep(1)
+                    boolFirstSlow = False
                 doc.ActiveLayout = doc.Layouts(layout.Name)
-                time.sleep(2)
                 doc.SendCommand("pspace z a  ")
                 entities = layout.Block
                 entitiesCount = entities.Count
@@ -365,18 +369,13 @@ class PyHelp():
         self.sortViewportDF()
 
     def sortViewportDF(self):
-        _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"]
+        _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
         indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
-        print (_msViewportDF)
-        print (indexMinList)
         for index in indexMinList:
-            print(index)
-            print(id)
             id = _msViewportDF['ID'].iloc[index]
+            vpIndex = ViewportsDF.index[ViewportsDF['ID'] == id][0]
+            ViewportsDF.loc[vpIndex, 'Is BasePlan ModelSpace'] = True
 
-            ViewportsDF.loc[ViewportsDF['ID'] == id, 'Is BasePlan ModelSpace'] = True
-            print("marked")
-        
 
     def findPaperSheets(self):
         # , linesDF, FittingsDF, TextsDF
@@ -436,4 +435,3 @@ def saveDF():
 
 p = PyHelp()
 saveDF()
-
