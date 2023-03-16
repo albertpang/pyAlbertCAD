@@ -42,13 +42,15 @@ class Viewport(Entity):
         self.center = block.Center
         self.height = block.Height
         self.width = block.Width
+        self.XData = block.GetXData("")
         self.sheet = layout.Name
+        self.numFrozenLayers = self.count_frozen_layers()
         self.isMain = None
         self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
         self.scale = round(block.CustomScale, 3)
         self.type = self.classify_viewport()
         self.crossLine = None
-        self.frozenLayerCount = 0
+
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
@@ -60,14 +62,22 @@ class Viewport(Entity):
         self.convertLinePaperSpace(psCorner1Point, psCorner2Point)
         self.classify_viewport()
 
+    def count_frozen_layers(self):
+        """ Uses block.getXData() to count all "Freeze VP" Layers """
+        self.numFrozenLayers = 0 
+        for data in self.XData[0]:
+            self.numFrozenLayers += 1
+        return self.numFrozenLayers
+            
+
     def classify_viewport(self):
         if self.scale == .25:
             self.type = "Section View"
             self.isMain = 'Not Applicable'
 
         elif self.scale == .05:
-            self.type = "Model View"            
-            # if self.isCenterViewport():
+            self.type = "Model View"
+            # if
             self.isMain = 'TRUE'
             # else:
             self.isMain = 'FALSE'
@@ -77,29 +87,9 @@ class Viewport(Entity):
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
-        time.sleep(0.2)
         doc.SendCommand("select last  chspace  ")
-        time.sleep(0.2)
         self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
         self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
-
-        for layer in doc.Layers:
-            # (layer.Freeze == True) and 
-            if layer.Name == 'C-PR-WATER':
-                try:
-                    x = 0
-                    y = 0
-                    extraStats = (layer.GetXData("", x, y))
-                    # vpfreeze_xdata = next((x[1] for x in extraStats if x[0] == 1000), None)
-
-                    # # Get the VPFreeze property value (assuming it's stored as a string)
-                    # vpfreeze = bool(vpfreeze_xdata) and vpfreeze_xdata.lower() == "true"
-                    print("VP Thaw")
-                except:
-                    print("VP Freeze")
-                print(layer.Name)
-                self.frozenLayerCount += 1
-        print(self.frozenLayerCount)
         doc.SendCommand("pspace ") 
 
 class Line(Entity):

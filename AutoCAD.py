@@ -1,5 +1,4 @@
 import win32com.client
-# from win32com.client import constants
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -21,28 +20,15 @@ class Sheet:
     -----------
     layout : Layout
         An AutoCAD Layout object representing the current drawing layout.
-
-    linesDF : pandas.DataFrame
-        A data frame containing information about lines in the current drawing.
-
-    FittingsDF : pandas.DataFrame
-        A data frame containing information about fittings in the current drawing.
-
-    TextsDF : pandas.DataFrame
-        A data frame containing information about texts in the current drawing.
-
-    BoMDF : pandas.DataFrame
-        A data frame containing information about bill of materials 
-        in the current drawing.
     """
+
     def __init__(self, layout ):
         self.__layout = layout
 
     def findBlocks(self):
-        """
-        Finds all the blocks in the current drawing and classifies them as lines, 
-        polylines, dynamic blocks, texts or mleader objects. The information 
-        about these objects is then stored in respective data frames.
+        """ Finds all the blocks in the current drawing and classifies them. 
+        The information about these objects is then stored in respective data
+        frames.
 
         Raises:
             Exception: If there is an error while iterating over the entities 
@@ -103,8 +89,7 @@ class Sheet:
     
     
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
-        """
-        Checks if three points are collinear.
+        """ Checks if three points are collinear.
 
         Parameters:
             x1 (float): The x coordinate of the first point.
@@ -323,12 +308,6 @@ class PyHelp():
             
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
-    def count_frozen_layer(self):
-        frozenLayerCount = 0
-        for layer in doc.layers:
-            print(layer.Frozen)
-
-
     def findViewports(self):
         layouts = doc.Layouts
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
@@ -350,7 +329,8 @@ class PyHelp():
                             entity.ViewportOn = True
                             vp = Viewport(entity, layout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
-                                                                       vp.height, vp.type, vp.isMain, 
+                                                                       vp.height, vp.type, vp.isMain,
+                                                                       vp.numFrozenLayers,
                                                                        vp.psCorner1[0], vp.psCorner1[1],
                                                                        vp.psCorner2[0], vp.psCorner2[1],
                                                                        vp.msCorner1[0], vp.msCorner1[1], 
@@ -403,13 +383,15 @@ FittingsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Block Description',
                                 'Block X', 'Block Y', 'Matching Line ID', 
                                 'Matching Line Length'])
 TextsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Block X', 'Block Y', 
-                                'Associated Text ID', 'Associated Text String'])        
-ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'isMain',
-                            'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
-                            'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
-                            'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
-                            'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
-                            ])
+                                'Associated Text ID', 'Associated Text String'])
+        
+ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'isMain', 
+                                    'Num of Frozen Layers',
+                                    'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
+                                    'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
+                                    'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
+                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
+                                    ])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
