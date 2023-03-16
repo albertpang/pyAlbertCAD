@@ -54,6 +54,9 @@ cover/
 #  DWG
 *.DWG
 *.bak
+*.dwl
+*.dwl2
+
 # Translations
 *.mo
 *.pot
