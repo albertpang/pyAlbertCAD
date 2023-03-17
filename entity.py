@@ -1,6 +1,8 @@
 import time
 import pandas as pd
 import math
+import array
+import wait
 import win32com.client
 from ACAD_DataTypes import APoint
 acad = win32com.client.Dispatch("AutoCAD.Application")
@@ -10,8 +12,8 @@ class Entity:
     def __init__(self, block, layout):
         self.ID = block.ObjectID
         self.sheet = layout
-        self.locationX = block.insertionPoint[0]
-        self.locationY = block.insertionPoint[1]
+        self.locationX = self.wait_for_attribute(block, "insertionPoint")[0]
+        self.locationY = self.wait_for_attribute(block, "insertionPoint")[1]
 
 class Fitting(Entity):
     def __init__(self, block, layout):
@@ -28,8 +30,6 @@ class Fitting(Entity):
         else:
             self.BlockName = block.Name
 
-
-        
 class Text(Entity):
     def __init__(self, block, layout):
         super().__init__(block, layout)
@@ -37,28 +37,27 @@ class Text(Entity):
 
 class Viewport(Entity):
     def __init__(self, block, layout):
-        # time.sleep(0.5)
         block.ViewportOn = False
         block.ViewportOn = True
-        self.ID = block.ObjectID
-        self.center = block.Center
-        self.height = block.Height
-        self.width = block.Width
-        self.XData = block.GetXData("")
-        self.sheet = layout.Name
+        self.ID = wait.wait_for_attribute(block, "ObjectID")
+        self.center = wait.wait_for_attribute(block, "Center")
+        self.height = wait.wait_for_attribute(block, "Height")
+        self.width = wait.wait_for_attribute(block, "Width")
+        self.XData = wait.wait_for_method_return(block, "GetXData" ,"")
         self.numFrozenLayers = self.count_frozen_layers()
-        self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
-        self.scale = round(block.CustomScale, 3)
+        self.sheet = wait.wait_for_attribute(layout, "Name")
+        self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
+        self.scale = round(wait.wait_for_attribute(block, "CustomScale"), 3)
         self.crossLine = None
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
-        
+        viewportCreated = True
         self.isCenter = self.is_center_viewport()
         self.type = self.classify_viewport()       
 
-        
+
         # Create AutoCAD Point object
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
@@ -68,7 +67,8 @@ class Viewport(Entity):
         """ Uses block.getXData() to count all "Freeze VP" Layers """
         self.numFrozenLayers = 0 
         for data in self.XData[0]:
-            self.numFrozenLayers += 1
+            if data == 1003:
+                self.numFrozenLayers += 1
         return self.numFrozenLayers
     
     def is_center_viewport(self):
@@ -96,12 +96,27 @@ class Viewport(Entity):
             return (f"Incorrect Scale: {self.scale}")
     
     def convertLinePaperSpace(self, p1, p2):
+        self.crossLine = None
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
-        # AutoCAD 2018 -- Different Order
-        doc.SendCommand("chspace last   ")
-        self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
-        self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
-        doc.SendCommand("pspace ") 
+        msCorner1 = wait.wait_for_attribute(self.crossLine, "StartPoint")
+        msCorner2 = wait.wait_for_attribute(self.crossLine, "EndPoint")
+        openFlag = False
+        while openFlag == False:
+            try:
+                doc.SendCommand("chspace last   ")
+                openFlag = True
+            except:
+                break
+        self.msCorner1 = (msCorner1[0], msCorner1[1])
+        self.msCorner2 = (msCorner2[0], msCorner2[1])
+        closeFlag = False
+        while closeFlag == False:
+            try:
+                doc.SendCommand("pspace ")
+                closeFlag = True
+            except:
+                break
+
 
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
