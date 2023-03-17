@@ -38,7 +38,8 @@ class Text(Entity):
 class Viewport(Entity):
     def __init__(self, block, layout):
         # time.sleep(0.5)
-        
+        block.ViewportOn = False
+        block.ViewportOn = True
         self.ID = block.ObjectID
         self.center = block.Center
         self.height = block.Height

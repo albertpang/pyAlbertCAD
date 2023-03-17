@@ -336,7 +336,7 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 if boolFirstSlow:
-                    time.sleep(1)
+                    time.sleep(0.5)
                     boolFirstSlow = False
                 doc.ActiveLayout = doc.Layouts(layout.Name)
                 doc.SendCommand("pspace z a  ")
@@ -348,16 +348,15 @@ class PyHelp():
                         entity = entities.Item(i)
                         entityName = entity.EntityName
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
-                            entity.ViewportOn = False
-                            entity.ViewportOn = True
-                            vp = Viewport(entity, layout)
-                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
-                                                                       vp.height, vp.type, vp.isCenter,
-                                                                       vp.numFrozenLayers, False,
-                                                                       vp.psCorner1[0], vp.psCorner1[1],
-                                                                       vp.psCorner2[0], vp.psCorner2[1],
-                                                                       vp.msCorner1[0], vp.msCorner1[1], 
-                                                                       vp.msCorner2[0], vp.msCorner2[1]]
+
+                            # vp = Viewport(entity, layout)
+                            # ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
+                            #                                            vp.height, vp.type, vp.isCenter,
+                            #                                            vp.numFrozenLayers, False,
+                            #                                            vp.psCorner1[0], vp.psCorner1[1],
+                            #                                            vp.psCorner2[0], vp.psCorner2[1],
+                            #                                            vp.msCorner1[0], vp.msCorner1[1], 
+                            #                                            vp.msCorner2[0], vp.msCorner2[1]]
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
