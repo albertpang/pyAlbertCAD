@@ -45,19 +45,18 @@ class Viewport(Entity):
         self.width = wait.wait_for_attribute(block, "Width")
         self.XData = wait.wait_for_method_return(block, "GetXData" ,"")
         self.numFrozenLayers = self.count_frozen_layers()
-        self.sheet = wait.wait_for_attribute(layout, "Name")
-        self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
-        self.scale = round(wait.wait_for_attribute(block, "CustomScale"), 3)
+        self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
+        self.scale = round(block.CustomScale, 3)
         self.crossLine = None
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
-        viewportCreated = True
+        
         self.isCenter = self.is_center_viewport()
         self.type = self.classify_viewport()       
 
-
+        
         # Create AutoCAD Point object
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])

@@ -349,40 +349,38 @@ class PyHelp():
                 doc.SendCommand("pspace z a  ")
                 entities = layout.Block
                 entitiesCount = entities.Count
+                doc.SendCommand("pspace z a ")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
                         entity = entities.Item(i)
                         entityName = entity.EntityName
+                        if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
+                            vp = Viewport(entity, layout)
+                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
+                                                                       vp.height, vp.type, vp.isCenter,
+                                                                       vp.numFrozenLayers, False,
+                                                                       vp.psCorner1[0], vp.psCorner1[1],
+                                                                       vp.psCorner2[0], vp.psCorner2[1],
+                                                                       vp.msCorner1[0], vp.msCorner1[1], 
+                                                                       vp.msCorner2[0], vp.msCorner2[1]]
+                            # Group by Sheet and find the Viewport with the fewest frozen layer
+                            errorCount = 0
+                        i += 1
                     except com_error as e:
-                        print(e)
                         time.sleep(0.5)
                     except Exception as e:
                         errorCount += 1
                         print(f"\tAttempt: {errorCount}", e)
-
-                    if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
-                        vp = Viewport(entity, layout)
-                        ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
-                                                                    vp.height, vp.type, vp.isCenter,
-                                                                    vp.numFrozenLayers, False,
-                                                                    vp.psCorner1[0], vp.psCorner1[1],
-                                                                    vp.psCorner2[0], vp.psCorner2[1],
-                                                                    vp.msCorner1[0], vp.msCorner1[1], 
-                                                                    vp.msCorner2[0], vp.msCorner2[1]]
-                        # Group by Sheet and find the Viewport with the fewest frozen layer
-                        errorCount = 0
-                    i += 1
-
                     
 
         self.sortViewportDF()
 
     def sortViewportDF(self):
         _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
-        indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmax().to_list()
+        indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
         for index in indexMinList:
-            id = _msViewportDF['ID'].iloc[index]
+            id = _msOverlapDF['ID'].iloc[index]
             vpIndex = ViewportsDF.index[ViewportsDF['ID'] == id][0]
             ViewportsDF.loc[vpIndex, 'Is BasePlan ModelSpace'] = True
 
