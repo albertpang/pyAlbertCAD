@@ -347,9 +347,9 @@ class PyHelp():
                     boolFirstSlow = False
                 time.sleep(0.5)
                 doc.ActiveLayout = doc.Layouts(layout.Name)
-                doc.SendCommand("pspace z a  ")
                 entities = layout.Block
                 entitiesCount = entities.Count
+                doc.SendCommand("pspace z a ")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
@@ -372,15 +372,14 @@ class PyHelp():
                     except Exception as e:
                         errorCount += 1
                         print(f"\tAttempt: {errorCount}", e)
-                    
-
         self.sortViewportDF()
 
     def sortViewportDF(self):
-        _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
-        indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
+        _msTypeDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
+        _msOverlapDF = _msTypeDF[_msTypeDF['Overlaps Center'] == True].reset_index(drop=True)
+        indexMinList = _msOverlapDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
         for index in indexMinList:
-            id = _msViewportDF['ID'].iloc[index]
+            id = _msOverlapDF['ID'].iloc[index]
             vpIndex = ViewportsDF.index[ViewportsDF['ID'] == id][0]
             ViewportsDF.loc[vpIndex, 'Is BasePlan ModelSpace'] = True
 
