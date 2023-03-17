@@ -1,4 +1,6 @@
 import win32com.client
+from pywintypes import com_error
+
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -99,11 +101,13 @@ class Sheet:
                     pass
                 elif entityObjectName == 'AcDbViewport':
                     pass
+                errorCount = 0 
                 i += 1
-
+            except com_error as e:
+                time.sleep(0.5)
             except Exception as e:
                 errorCount += 1
-                print(f"\tAttempt Count: {errorCount}", i, entityObjectName, e)
+                print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
     
     
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -202,7 +206,7 @@ class Sheet:
         for textIndex in TextsDF.index:
             if ("DUCTILE" in TextsDF.loc[textIndex, 'Associated Text String'] and 
                 "'" in TextsDF.loc[textIndex, 'Text']):
-                print(f"{TextsDF['Sheet'][textIndex]} : "
+                print(f"\t{TextsDF['Sheet'][textIndex]} : "
                       f"{TextsDF['Text'][textIndex]} of "
                       f"{TextsDF['Associated Text String'][textIndex]}")
 
@@ -299,9 +303,12 @@ class PyHelp():
         print("Removing Albert's Calculation Linework")
         for index, row in LinesDF.iterrows():
         # Check if the layer of the current row is 'AlbertToolLayer'
-            if row['Layer'] == 'AlbertToolLayer':
-                line = acad.ActiveDocument.ObjectIDtoObject(int(row['ID']))
-                line.Delete()
+            try:
+                if row['Layer'] == 'AlbertToolLayer':
+                    line = acad.ActiveDocument.ObjectIDtoObject(int(row['ID']))
+                    line.Delete()
+            except:
+                print("Failed")
 
 
     def validateViewport(self, entity, layout):
@@ -336,8 +343,9 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 if boolFirstSlow:
-                    time.sleep(1)
+                    time.sleep(0.5)
                     boolFirstSlow = False
+                time.sleep(0.5)
                 doc.ActiveLayout = doc.Layouts(layout.Name)
                 entities = layout.Block
                 entitiesCount = entities.Count
@@ -348,11 +356,7 @@ class PyHelp():
                         entity = entities.Item(i)
                         entityName = entity.EntityName
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
-                            entity.ViewportOn = False
-                            entity.ViewportOn = True
-                            print("Here5")
                             vp = Viewport(entity, layout)
-                            print("Here6")
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
                                                                        vp.height, vp.type, vp.isCenter,
                                                                        vp.numFrozenLayers, False,
@@ -363,11 +367,11 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-
+                    except com_error as e:
+                        time.sleep(0.5)
                     except Exception as e:
                         errorCount += 1
-                        time.sleep(0.3)
-                        print(f"\tAttempt Count: {errorCount}", e)
+                        print(f"\tAttempt: {errorCount}", e)
         self.sortViewportDF()
 
     def sortViewportDF(self):

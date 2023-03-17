@@ -37,7 +37,9 @@ class Text(Entity):
 
 class Viewport(Entity):
     def __init__(self, block, layout):
-        print("Here6a")
+        # time.sleep(0.5)
+        block.ViewportOn = False
+        block.ViewportOn = True
         self.ID = block.ObjectID
         self.center = block.Center
         self.height = block.Height
@@ -93,7 +95,8 @@ class Viewport(Entity):
     
     def convertLinePaperSpace(self, p1, p2):
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
-        doc.SendCommand("select last  chspace  ")
+        # AutoCAD 2018 -- Different Order
+        doc.SendCommand("chspace last   ")
         self.msCorner1 = (self.crossLine.StartPoint[0], self.crossLine.StartPoint[1])
         self.msCorner2 = (self.crossLine.EndPoint[0], self.crossLine.EndPoint[1])
         doc.SendCommand("pspace ") 
