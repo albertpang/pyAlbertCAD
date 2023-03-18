@@ -61,8 +61,8 @@ class Sheet:
             # if i == (entitiesCount // 2):
             #     print ("--- 50% done ---")
             try:
-                entity = entities.Item(i)
-                entityObjectName = entity.ObjectName
+                entity = wait.wait_for_method_return(entities, "Item()", i)
+                entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
 
                 # Line Object
                 if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
@@ -105,6 +105,7 @@ class Sheet:
                 i += 1
             except com_error as e:
                 time.sleep(0.5)
+                print("here")
             except Exception as e:
                 errorCount += 1
                 print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
@@ -252,6 +253,7 @@ class Sheet:
         BillOfMaterialsDF['Fitting'] = BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
         BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
+
     def assignBlockToSheet(self):
         def liesWithin(c1, c2, fittingPoint):
             x, y = fittingPoint
@@ -294,10 +296,12 @@ class PyHelp():
         self.findPaperSheets()
         self.removeAlbertTool()
 
+
     def createAlbertLayer(self):
         coordinateLayer = doc.layers.Add("AlbertToolLayer")
         coordinateLayer.LayerOn
         coordinateLayer.color = 40
+
 
     def removeAlbertTool(self):
         print("Removing Albert's Calculation Linework")
@@ -333,22 +337,19 @@ class PyHelp():
             
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
+
     def findViewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
-        boolFirstSlow = True
-        layouts = doc.Layouts
+        layouts = wait.wait_for_attribute(doc, "Layouts")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
         for layout in layouts:
             if layout.Name != "Model":
-                doc.ActiveLayout = doc.Layouts(layout.Name)
-                if boolFirstSlow:
-                    time.sleep(1)
-                    boolFirstSlow = False
+                doc.ActiveLayout = doc.Layouts(wait.wait_for_attribute(layout, "Name"))
                 doc.SendCommand("pspace z a  ")
-                entities = layout.Block
-                entitiesCount = entities.Count
+                entities = wait.wait_for_attribute(layout, "Block")
+                entitiesCount = wait.wait_for_attribute(entities,"Count")
                 doc.SendCommand("pspace z a ")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
@@ -367,18 +368,17 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    except com_error as e:
-                        time.sleep(0.5)
                     except Exception as e:
                         errorCount += 1
                         print(f"\tAttempt: {errorCount}", e)
-                    
 
         self.sortViewportDF()
 
+
     def sortViewportDF(self):
         _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
-        indexMinList = _msViewportDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
+        _msOverlapDF = _msViewportDF[_msViewportDF['Overlaps Center'] == True].reset_index(drop=True)
+        indexMinList = _msOverlapDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
         for index in indexMinList:
             id = _msOverlapDF['ID'].iloc[index]
             vpIndex = ViewportsDF.index[ViewportsDF['ID'] == id][0]

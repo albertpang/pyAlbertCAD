@@ -1,6 +1,5 @@
 import time
 
-
 def wait_for_attribute(obj, attr_name, *args):
     """
     Waits for a CDispatch attribute to be retrieved.

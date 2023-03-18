@@ -1,7 +1,6 @@
 import time
 import pandas as pd
 import math
-import array
 import wait
 import win32com.client
 from ACAD_DataTypes import APoint
@@ -10,10 +9,10 @@ doc = acad.ActiveDocument
 
 class Entity:
     def __init__(self, block, layout):
-        self.ID = block.ObjectID
+        self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.sheet = layout
-        self.locationX = self.wait_for_attribute(block, "insertionPoint")[0]
-        self.locationY = self.wait_for_attribute(block, "insertionPoint")[1]
+        self.locationX = wait.wait_for_attribute(block, "insertionPoint")[0]
+        self.locationY = wait.wait_for_attribute(block, "insertionPoint")[1]
 
 class Fitting(Entity):
     def __init__(self, block, layout):
@@ -44,15 +43,15 @@ class Viewport(Entity):
         self.height = wait.wait_for_attribute(block, "Height")
         self.width = wait.wait_for_attribute(block, "Width")
         self.XData = wait.wait_for_method_return(block, "GetXData" ,"")
+        self.sheet = wait.wait_for_attribute(layout, "Name")
         self.numFrozenLayers = self.count_frozen_layers()
-        self.sheetHeight, self.sheetWidth = layout.GetPaperSize()
+        self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
         self.scale = round(block.CustomScale, 3)
         self.crossLine = None
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                             self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
-        
         self.isCenter = self.is_center_viewport()
         self.type = self.classify_viewport()       
 
@@ -95,19 +94,25 @@ class Viewport(Entity):
             return (f"Incorrect Scale: {self.scale}")
     
     def convertLinePaperSpace(self, p1, p2):
-        self.crossLine = None
         self.crossLine = doc.PaperSpace.AddLine(p1, p2)
-        msCorner1 = wait.wait_for_attribute(self.crossLine, "StartPoint")
-        msCorner2 = wait.wait_for_attribute(self.crossLine, "EndPoint")
+
         openFlag = False
         while openFlag == False:
             try:
+                # AutoCAD 2018
                 doc.SendCommand("chspace last   ")
+                # # AutoCAD 2023
+                # doc.SendCommand("")
                 openFlag = True
             except:
                 break
+            
+        msCorner1 = wait.wait_for_attribute(self.crossLine, "StartPoint")
+        msCorner2 = wait.wait_for_attribute(self.crossLine, "EndPoint")
+        
         self.msCorner1 = (msCorner1[0], msCorner1[1])
         self.msCorner2 = (msCorner2[0], msCorner2[1])
+
         closeFlag = False
         while closeFlag == False:
             try:
