@@ -256,13 +256,15 @@ class Sheet:
 
     def assignBlockToSheet(self):
         def liesWithin(c1, c2, fittingPoint):
+            # I have absolutely no clue why my x
             x, y = fittingPoint
-            minX = min(c1[0], c2[0])
-            maxX = max(c1[0], c2[0])
-            minY = min(c1[1], c2[1])
-            maxY = max(c1[1], c2[1])
-            insideX = (minX <= x <= maxX)
-            insideY = (minY <= y <= maxY)
+            minX = min(abs(c1[0]), abs(c2[0]))
+            maxX = max(abs(c1[0]), abs(c2[0]))
+            minY = min(abs(c1[1]), abs(c2[1]))
+            maxY = max(abs(c1[1]), abs(c2[1]))
+
+            insideX = (minX <= x) and (x <= maxX)
+            insideY = (minY <= y) and (y <= maxY)
             return (insideX and insideY)
         
         FittingsDF['Matching Viewport ID'] = 'N/A'
@@ -294,7 +296,7 @@ class PyHelp():
         self.createAlbertLayer()
         self.findViewports()
         self.findPaperSheets()
-        # self.removeAlbertTool()
+        self.removeAlbertTool()
 
 
     def createAlbertLayer(self):
@@ -342,10 +344,12 @@ class PyHelp():
     def findViewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
         layouts = wait.wait_for_attribute(doc, "Layouts")
+        numLayouts = wait.wait_for_attribute(layouts, "Count")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
         for layout in layouts:
+            print(wait.wait_for_attribute(layout, "Name"))
             if layout.Name != "Model":
                 doc.ActiveLayout = doc.Layouts(wait.wait_for_attribute(layout, "Name"))
                 paperFlag = False
@@ -360,8 +364,8 @@ class PyHelp():
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
-                        entity = entities.Item(i)
-                        entityName = entity.EntityName
+                        entity = wait.wait_for_method_return(entities, "Item", i)
+                        entityName = wait.wait_for_attribute(entity, "EntityName")
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
                             vp = Viewport(entity, layout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
