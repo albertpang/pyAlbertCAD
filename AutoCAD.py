@@ -42,7 +42,7 @@ class Sheet:
         An AutoCAD Layout object representing the current drawing layout.
     """
 
-    def __init__(self, layout ):
+    def __init__(self, layout):
         self.__layout = layout
 
     def findBlocks(self):
@@ -54,14 +54,14 @@ class Sheet:
             Exception: If there is an error while iterating over the entities 
             in the layout.
         """
-        entities = self.__layout.Block
-        entitiesCount = entities.Count 
+        entities = wait.wait_for_attribute(self.__layout, "Block")
+        entitiesCount = wait.wait_for_attribute(entities, "Count") 
         i, errorCount = 0, 1
         while i < entitiesCount and errorCount <= 3:
             # if i == (entitiesCount // 2):
             #     print ("--- 50% done ---")
             try:
-                entity = wait.wait_for_method_return(entities, "Item()", i)
+                entity = wait.wait_for_method_return(entities, "Item", i)
                 entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
 
                 # Line Object
@@ -294,7 +294,7 @@ class PyHelp():
         self.createAlbertLayer()
         self.findViewports()
         self.findPaperSheets()
-        self.removeAlbertTool()
+        # self.removeAlbertTool()
 
 
     def createAlbertLayer(self):
@@ -319,10 +319,11 @@ class PyHelp():
         # Fits within the bounds of the page
         def isViewPortSize(layout, entity):
             PIXELtoINCH = 25.4
-            height, width = layout.GetPaperSize()
+            height, width = wait.wait_for_method_return(layout, "GetPaperSize")
             width /= PIXELtoINCH
             height /= PIXELtoINCH
-            return (getattr(entity, "Height") < height and getattr(entity, "Width") < width)
+            return (wait.wait_for_attribute(entity, "Height") < height and 
+                    wait.wait_for_attribute(entity, "Width") < width)
         # Starts and ends within the bounds of the page
         def isWithinPage(entity):
             corner1 = (entity.Center[0] - (abs(entity.Width) / 2), 
@@ -347,10 +348,15 @@ class PyHelp():
         for layout in layouts:
             if layout.Name != "Model":
                 doc.ActiveLayout = doc.Layouts(wait.wait_for_attribute(layout, "Name"))
-                doc.SendCommand("pspace z a  ")
+                paperFlag = False
+                while paperFlag == False:
+                    try: 
+                        doc.SendCommand("pspace z a  ")
+                        paperFlag = True
+                    except:
+                        break
                 entities = wait.wait_for_attribute(layout, "Block")
                 entitiesCount = wait.wait_for_attribute(entities,"Count")
-                doc.SendCommand("pspace z a ")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
