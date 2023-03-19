@@ -260,7 +260,7 @@ class Sheet:
 
     def assignBlockToSheet(self):
         def liesWithin(c1, c2, c3, c4, fittingPoint):
-            # I have absolutely no clue why my x
+            # Logic for checking if point belongs inside a Parallelogram
             x, y = fittingPoint
             minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
             maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
@@ -269,6 +269,7 @@ class Sheet:
             insideX = (minX <= x) and (x <= maxX)
             insideY = (minY <= y) and (y <= maxY)
             return (insideX and insideY)
+            inside = False
         
         # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
@@ -279,6 +280,8 @@ class Sheet:
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
             if ViewportsDF['Is BasePlan ModelSpace'][viewportIndex] == True:
+                # ccw rotation about corners
+                # 1 -> 3 -> 2 -> 4
                 corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
                 corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
