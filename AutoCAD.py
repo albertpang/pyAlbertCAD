@@ -26,7 +26,11 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
                                     'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
                                     'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
                                     'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
-                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
+                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y',
+                                    'PaperSpace Coordinate Corner3 X', 'PaperSpace Coordinate Corner3 Y',
+                                    'PaperSpace Coordinate Corner4 X', 'PaperSpace Coordinate Corner4 Y',
+                                    'ModelSpace Coordinate Corner3 X', 'ModelSpace Coordinate Corner3 Y',
+                                    'ModelSpace Coordinate Corner4 X', 'ModelSpace Coordinate Corner4 Y',
                                     ])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
@@ -255,22 +259,23 @@ class Sheet:
 
 
     def assignBlockToSheet(self):
-        def liesWithin(c1, c2, fittingPoint):
+        def liesWithin(c1, c2, c3, c4, fittingPoint):
             # I have absolutely no clue why my x
             x, y = fittingPoint
-            minX = min(abs(c1[0]), abs(c2[0]))
-            maxX = max(abs(c1[0]), abs(c2[0]))
-            minY = min(abs(c1[1]), abs(c2[1]))
-            maxY = max(abs(c1[1]), abs(c2[1]))
-
+            minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
+            maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
             insideX = (minX <= x) and (x <= maxX)
             insideY = (minY <= y) and (y <= maxY)
             return (insideX and insideY)
         
+        # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
         FittingsDF['Matching Viewport Sheet'] = 'N/A'
-        FittingsDF['Main ModelSpace Viewport'] = 'N/A'
 
+        # Iteratively gather all coordinates by going through Viewports that are 
+        # main BasePlan ModelSpaces
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
             if ViewportsDF['Is BasePlan ModelSpace'][viewportIndex] == True:
@@ -278,18 +283,21 @@ class Sheet:
                                 ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
                 corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner2 Y'][viewportIndex])
+                corner3 = (ViewportsDF['ModelSpace Coordinate Corner3 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner3 Y'][viewportIndex])
+                corner4 = (ViewportsDF['ModelSpace Coordinate Corner4 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner4 Y'][viewportIndex])
+                
                 for fittingIndex in FittingsDF.index:
                     fittingPoint = (FittingsDF['Block X'][fittingIndex],
                                     FittingsDF['Block Y'][fittingIndex])
+                    # Only check for Fittings inside ModelSpace
                     if FittingsDF['Sheet'][fittingIndex] == 'Model':
-                        if liesWithin(corner1, corner2, fittingPoint):
+                        if liesWithin(corner1, corner2, corner3, corner4, fittingPoint):
                             FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
                                 ViewportsDF['ID'][viewportIndex]
                             FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
                                 ViewportsDF['Sheet'][viewportIndex]
-                    else:
-                        continue
-
 
 class PyHelp():
     def __init__(self) -> None:
@@ -374,7 +382,12 @@ class PyHelp():
                                                                        vp.psCorner1[0], vp.psCorner1[1],
                                                                        vp.psCorner2[0], vp.psCorner2[1],
                                                                        vp.msCorner1[0], vp.msCorner1[1], 
-                                                                       vp.msCorner2[0], vp.msCorner2[1]]
+                                                                       vp.msCorner2[0], vp.msCorner2[1],
+                                                                       vp.psCorner3[0], vp.psCorner3[1],
+                                                                       vp.psCorner4[0], vp.psCorner4[1],
+                                                                       vp.msCorner3[0], vp.msCorner3[1], 
+                                                                       vp.msCorner4[0], vp.msCorner4[1],
+                                                                       ]
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1

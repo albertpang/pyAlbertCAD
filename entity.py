@@ -6,16 +6,6 @@ import win32com.client
 from ACAD_DataTypes import APoint
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
-# ideal
-	# 812.07537657651
-# real
-    # 299.0185
-
-# ideal
-	# 812.07537657651
-# real
-    # 299.0185
-    
 
 class Entity:
     def __init__(self, block, layout):
@@ -57,40 +47,29 @@ class Viewport(Entity):
         self.numFrozenLayers = self.count_frozen_layers()
         self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
         self.scale = round(block.CustomScale, 3)
-        self.crossLine = None
-        self.msCenter = wait.wait_for_method_return(block, "GetXData", "")[1][4]
+        self.msCenter = self.XData[1][4]
 
         # PaperSpace Coordinates for Viewport
         self.psCorner1 = (self.center[0] - (abs(self.width) / 2), 
                           self.center[1] + (abs(self.height) / 2))
         self.psCorner2 = (self.center[0] + (abs(self.width) / 2), 
                             self.center[1] - (abs(self.height) / 2))
-        
-        # self.test1 = (self.center[0] + (abs(self.height) / 2),
-        #                   self.center[1] - (abs(self.width) / 2))
-        # self.test3 = (self.center[0] + (abs(self.height) / 2),
-        #             self.center[1] + (abs(self.width) / 2))
-        # self.test2 = (self.center[0] - (abs(self.height) / 2),
-        #             self.center[1] + (abs(self.width) / 2))
-        # self.test4 = (self.center[0] - (abs(self.height) / 2),
-        #     self.center[1] - (abs(self.width) / 2))
-        
-        # print (f"t1 {self.test1}")
-        # print (f"t2 {self.test2}")
-        # print (f"t3 {self.test3}")
-        # print (f"t4 {self.test4}")
-              
-              
-
-                            
+        self.psCorner3 = (self.center[0] + (abs(self.width) / 2), 
+                          self.center[1] + (abs(self.height) / 2))
+        self.psCorner4 = (self.center[0] - (abs(self.width) / 2), 
+                            self.center[1] - (abs(self.height) / 2))
+                             
         self.isCenter = self.is_center_viewport()
         self.type = self.classify_viewport()       
 
-        
         # Create AutoCAD Point object
         psCorner1Point = APoint(self.psCorner1[0], self.psCorner1[1])
         psCorner2Point = APoint(self.psCorner2[0], self.psCorner2[1])
-        self.convertLinePaperSpace(block, psCorner1Point, psCorner2Point)
+        psCorner3Point = APoint(self.psCorner3[0], self.psCorner3[1])
+        psCorner4Point = APoint(self.psCorner4[0], self.psCorner4[1])
+        
+        self.convertLinePaperSpace(psCorner1Point, psCorner2Point, 
+                                   psCorner3Point, psCorner4Point)
 
     def count_frozen_layers(self):
         """ Uses block.getXData() to count all "Freeze VP" Layers """
@@ -125,35 +104,55 @@ class Viewport(Entity):
         else:
             return (f"Incorrect Scale: {self.scale}")
     
-    def convertLinePaperSpace(self, p1, p2):
-        self.crossLine = doc.PaperSpace.AddLine(p1, p2)
-        openFlag = False
-        while openFlag == False:
-            try:
-                # AutoCAD 2018
-                doc.SendCommand("chspace last   ")
-                # # AutoCAD 2023
-                # doc.SendCommand("")
-                openFlag = True
-            except:
-                break
+    def convertLinePaperSpace(self, p1, p2, p3, p4):
+        '''This method will take all 4 corners of the viewport, and draw two 
+        intersecting lines that we will use to get coordinates of the viewport.
+        We need two lines, because you cannot get the askewed viewports otherwise'''
+        # Flag to Ensure Viewport was Opened
+        def openViewport():
+            openFlag = False
+            while openFlag == False:
+                try:
+                    # AutoCAD 2018
+                    doc.SendCommand("chspace last   ")
+                    # # AutoCAD 2023
+                    # doc.SendCommand("")
+                    openFlag = True
+                except:
+                    break
+        def closeViewport():
+            # Flag to Ensure Viewport was Closed
+            closeFlag = False
+            while closeFlag == False:
+                try:
+                    doc.SendCommand("pspace ")
+                    closeFlag = True
+                except:
+                    break
         
-        
-        msCorner1 = wait.wait_for_attribute(self.crossLine, "StartPoint")
-        msCorner2 = wait.wait_for_attribute(self.crossLine, "EndPoint")
+        # Draw the Lines and declare as crossLines
+        self.crossLine1 = doc.PaperSpace.AddLine(p1, p2)
+        openViewport()
+        # Get the Coordinates for the diagonal inside the Viewport
+        msCorner1 = wait.wait_for_attribute(self.crossLine1, "StartPoint")
+        msCorner2 = wait.wait_for_attribute(self.crossLine1, "EndPoint")
+        closeViewport()
+
+
+        self.crossLine2 = doc.PaperSpace.AddLine(p3, p4)
+        openViewport()
+        # Get the Coordinates for the diagonal inside the Viewport
+        msCorner3 = wait.wait_for_attribute(self.crossLine2, "StartPoint")
+        msCorner4 = wait.wait_for_attribute(self.crossLine2, "EndPoint") 
+        closeViewport()
+
+        # Convert all 4 corner points into tuples of coordinates for the viewport
         self.msCorner1 = (msCorner1[0], msCorner1[1])
         self.msCorner2 = (msCorner2[0], msCorner2[1])
+        self.msCorner3 = (msCorner3[0], msCorner3[1])
+        self.msCorner4 = (msCorner4[0], msCorner4[1])
         
-        # self.msCorner1 = msCorners[0]
-        # self.msCorner2 = msCorners[1]
-
-        closeFlag = False
-        while closeFlag == False:
-            try:
-                doc.SendCommand("pspace ")
-                closeFlag = True
-            except:
-                break
+        
 
 
 class Line(Entity):
