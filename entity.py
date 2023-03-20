@@ -1,4 +1,4 @@
-import time
+import re
 import pandas as pd
 import math
 import wait
@@ -32,7 +32,17 @@ class Fitting(Entity):
 class Text(Entity):
     def __init__(self, block, layout):
         super().__init__(block, layout)
-        self.text = block.textString
+        self.text = wait.wait_for_attribute(block, "textString")
+    #     self.format_string(block)
+    
+    # def format_string(self, block):
+    #     self.unformattedText = wait.wait_for_attribute(block, "textString")
+    #     exclude_list = ('P', 'S')
+    #     self.unformattedText = re.sub(r'\{?\\[^%s][^;]+;' % ''.join(exclude_list), '', self.unformattedText)
+    #     self.unformattedText = re.sub(r'\}', '', self.unformattedText)
+    #     print(self.unformattedText)
+    #     return self.unformattedText
+
 
 class Viewport(Entity):
     def __init__(self, block, layout):
