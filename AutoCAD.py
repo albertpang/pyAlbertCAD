@@ -1,6 +1,6 @@
 import win32com.client
 from pywintypes import com_error
-
+import wait
 import numpy as np
 from ACAD_DataTypes import APoint
 import pandas as pd
@@ -26,7 +26,11 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
                                     'PaperSpace Coordinate Corner1 X', 'PaperSpace Coordinate Corner1 Y',
                                     'PaperSpace Coordinate Corner2 X', 'PaperSpace Coordinate Corner2 Y',
                                     'ModelSpace Coordinate Corner1 X', 'ModelSpace Coordinate Corner1 Y',
-                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y'
+                                    'ModelSpace Coordinate Corner2 X', 'ModelSpace Coordinate Corner2 Y',
+                                    'PaperSpace Coordinate Corner3 X', 'PaperSpace Coordinate Corner3 Y',
+                                    'PaperSpace Coordinate Corner4 X', 'PaperSpace Coordinate Corner4 Y',
+                                    'ModelSpace Coordinate Corner3 X', 'ModelSpace Coordinate Corner3 Y',
+                                    'ModelSpace Coordinate Corner4 X', 'ModelSpace Coordinate Corner4 Y',
                                     ])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
@@ -42,7 +46,7 @@ class Sheet:
         An AutoCAD Layout object representing the current drawing layout.
     """
 
-    def __init__(self, layout ):
+    def __init__(self, layout):
         self.__layout = layout
 
     def findBlocks(self):
@@ -54,15 +58,15 @@ class Sheet:
             Exception: If there is an error while iterating over the entities 
             in the layout.
         """
-        entities = self.__layout.Block
-        entitiesCount = entities.Count 
+        entities = wait.wait_for_attribute(self.__layout, "Block")
+        entitiesCount = wait.wait_for_attribute(entities, "Count") 
         i, errorCount = 0, 1
         while i < entitiesCount and errorCount <= 3:
             # if i == (entitiesCount // 2):
             #     print ("--- 50% done ---")
             try:
-                entity = entities.Item(i)
-                entityObjectName = entity.ObjectName
+                entity = wait.wait_for_method_return(entities, "Item", i)
+                entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
 
                 # Line Object
                 if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
@@ -105,6 +109,7 @@ class Sheet:
                 i += 1
             except com_error as e:
                 time.sleep(0.5)
+                print("here")
             except Exception as e:
                 errorCount += 1
                 print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
@@ -252,40 +257,50 @@ class Sheet:
         BillOfMaterialsDF['Fitting'] = BillOfMaterialsDF['Fitting List'].str.split('-').str[1]
         BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
+
     def assignBlockToSheet(self):
-        def liesWithin(c1, c2, fittingPoint):
+        def liesWithin(c1, c2, c3, c4, fittingPoint):
+            # Logic for checking if point belongs inside a Parallelogram
             x, y = fittingPoint
-            minX = min(c1[0], c2[0])
-            maxX = max(c1[0], c2[0])
-            minY = min(c1[1], c2[1])
-            maxY = max(c1[1], c2[1])
-            insideX = (minX <= x <= maxX)
-            insideY = (minY <= y <= maxY)
+            minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
+            maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
+            insideX = (minX <= x) and (x <= maxX)
+            insideY = (minY <= y) and (y <= maxY)
             return (insideX and insideY)
+            inside = False
         
+        # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
         FittingsDF['Matching Viewport Sheet'] = 'N/A'
-        FittingsDF['Main ModelSpace Viewport'] = 'N/A'
 
+        # Iteratively gather all coordinates by going through Viewports that are 
+        # main BasePlan ModelSpaces
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
             if ViewportsDF['Is BasePlan ModelSpace'][viewportIndex] == True:
+                # ccw rotation about corners
+                # 1 -> 3 -> 2 -> 4
                 corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
                 corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner2 Y'][viewportIndex])
+                corner3 = (ViewportsDF['ModelSpace Coordinate Corner3 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner3 Y'][viewportIndex])
+                corner4 = (ViewportsDF['ModelSpace Coordinate Corner4 X'][viewportIndex],
+                                ViewportsDF['ModelSpace Coordinate Corner4 Y'][viewportIndex])
+                
                 for fittingIndex in FittingsDF.index:
                     fittingPoint = (FittingsDF['Block X'][fittingIndex],
                                     FittingsDF['Block Y'][fittingIndex])
+                    # Only check for Fittings inside ModelSpace
                     if FittingsDF['Sheet'][fittingIndex] == 'Model':
-                        if liesWithin(corner1, corner2, fittingPoint):
+                        if liesWithin(corner1, corner2, corner3, corner4, fittingPoint):
                             FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
                                 ViewportsDF['ID'][viewportIndex]
                             FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
                                 ViewportsDF['Sheet'][viewportIndex]
-                    else:
-                        continue
-
 
 class PyHelp():
     def __init__(self) -> None:
@@ -294,10 +309,12 @@ class PyHelp():
         self.findPaperSheets()
         self.removeAlbertTool()
 
+
     def createAlbertLayer(self):
         coordinateLayer = doc.layers.Add("AlbertToolLayer")
         coordinateLayer.LayerOn
         coordinateLayer.color = 40
+
 
     def removeAlbertTool(self):
         print("Removing Albert's Calculation Linework")
@@ -315,10 +332,11 @@ class PyHelp():
         # Fits within the bounds of the page
         def isViewPortSize(layout, entity):
             PIXELtoINCH = 25.4
-            height, width = layout.GetPaperSize()
+            height, width = wait.wait_for_method_return(layout, "GetPaperSize")
             width /= PIXELtoINCH
             height /= PIXELtoINCH
-            return (entity.Height < height and entity.Width < width)
+            return (wait.wait_for_attribute(entity, "Height") < height and 
+                    wait.wait_for_attribute(entity, "Width") < width)
         # Starts and ends within the bounds of the page
         def isWithinPage(entity):
             corner1 = (entity.Center[0] - (abs(entity.Width) / 2), 
@@ -333,28 +351,32 @@ class PyHelp():
             
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
+
     def findViewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
-        boolFirstSlow = True
-        layouts = doc.Layouts
+        layouts = wait.wait_for_attribute(doc, "Layouts")
+        numLayouts = wait.wait_for_attribute(layouts, "Count")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
         for layout in layouts:
+            print(wait.wait_for_attribute(layout, "Name"))
             if layout.Name != "Model":
-                if boolFirstSlow:
-                    time.sleep(0.5)
-                    boolFirstSlow = False
-                time.sleep(0.5)
-                doc.ActiveLayout = doc.Layouts(layout.Name)
-                entities = layout.Block
-                entitiesCount = entities.Count
-                doc.SendCommand("pspace z a ")
+                doc.ActiveLayout = doc.Layouts(wait.wait_for_attribute(layout, "Name"))
+                paperFlag = False
+                while paperFlag == False:
+                    try: 
+                        doc.SendCommand("pspace z a  ")
+                        paperFlag = True
+                    except:
+                        break
+                entities = wait.wait_for_attribute(layout, "Block")
+                entitiesCount = wait.wait_for_attribute(entities,"Count")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
                     try:
-                        entity = entities.Item(i)
-                        entityName = entity.EntityName
+                        entity = wait.wait_for_method_return(entities, "Item", i)
+                        entityName = wait.wait_for_attribute(entity, "EntityName")
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
                             vp = Viewport(entity, layout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
@@ -363,20 +385,25 @@ class PyHelp():
                                                                        vp.psCorner1[0], vp.psCorner1[1],
                                                                        vp.psCorner2[0], vp.psCorner2[1],
                                                                        vp.msCorner1[0], vp.msCorner1[1], 
-                                                                       vp.msCorner2[0], vp.msCorner2[1]]
+                                                                       vp.msCorner2[0], vp.msCorner2[1],
+                                                                       vp.psCorner3[0], vp.psCorner3[1],
+                                                                       vp.psCorner4[0], vp.psCorner4[1],
+                                                                       vp.msCorner3[0], vp.msCorner3[1], 
+                                                                       vp.msCorner4[0], vp.msCorner4[1],
+                                                                       ]
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    except com_error as e:
-                        time.sleep(0.5)
                     except Exception as e:
                         errorCount += 1
                         print(f"\tAttempt: {errorCount}", e)
+
         self.sortViewportDF()
 
+
     def sortViewportDF(self):
-        _msTypeDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
-        _msOverlapDF = _msTypeDF[_msTypeDF['Overlaps Center'] == True].reset_index(drop=True)
+        _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
+        _msOverlapDF = _msViewportDF[_msViewportDF['Overlaps Center'] == True].reset_index(drop=True)
         indexMinList = _msOverlapDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
         for index in indexMinList:
             id = _msOverlapDF['ID'].iloc[index]
