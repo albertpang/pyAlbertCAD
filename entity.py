@@ -47,6 +47,7 @@ class Text(Entity):
 class Viewport(Entity):
     def __init__(self, block, layout):
         block.ViewportOn = False
+        wait.wait_for_attribute(block, "ViewportOn")
         block.ViewportOn = True
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.center = wait.wait_for_attribute(block, "Center")
@@ -118,43 +119,23 @@ class Viewport(Entity):
         '''This method will take all 4 corners of the viewport, and draw two 
         intersecting lines that we will use to get coordinates of the viewport.
         We need two lines, because you cannot get the askewed viewports otherwise'''
-        # Flag to Ensure Viewport was Opened
-        def openViewport():
-            openFlag = False
-            while openFlag == False:
-                try:
-                    # AutoCAD 2018
-                    doc.SendCommand("chspace last   ")
-                    # # AutoCAD 2023
-                    # doc.SendCommand("")
-                    openFlag = True
-                except:
-                    break
-        def closeViewport():
-            # Flag to Ensure Viewport was Closed
-            closeFlag = False
-            while closeFlag == False:
-                try:
-                    doc.SendCommand("pspace ")
-                    closeFlag = True
-                except:
-                    break
-        
+
         # Draw the Lines and declare as crossLines
-        self.crossLine1 = doc.PaperSpace.AddLine(p1, p2)
-        openViewport()
+        paperSpace = wait.wait_for_attribute(doc, "PaperSpace")
+
+        self.crossLine1 = wait.wait_for_method_return(paperSpace, "AddLine", p1, p2)
+        wait.wait_for_method_return(doc, "SendCommand", "chspace last   ")
         # Get the Coordinates for the diagonal inside the Viewport
         msCorner1 = wait.wait_for_attribute(self.crossLine1, "StartPoint")
         msCorner2 = wait.wait_for_attribute(self.crossLine1, "EndPoint")
-        closeViewport()
+        wait.wait_for_method_return(doc, "SendCommand", "pspace ")
 
-
-        self.crossLine2 = doc.PaperSpace.AddLine(p3, p4)
-        openViewport()
+        self.crossLine2 = wait.wait_for_method_return(paperSpace, "AddLine", p3, p4)
+        wait.wait_for_method_return(doc, "SendCommand", "chspace last   ")
         # Get the Coordinates for the diagonal inside the Viewport
         msCorner3 = wait.wait_for_attribute(self.crossLine2, "StartPoint")
         msCorner4 = wait.wait_for_attribute(self.crossLine2, "EndPoint") 
-        closeViewport()
+        wait.wait_for_method_return(doc, "SendCommand", "pspace ")
 
         # Convert all 4 corner points into tuples of coordinates for the viewport
         self.msCorner1 = (msCorner1[0], msCorner1[1])

@@ -259,17 +259,27 @@ class Sheet:
 
 
     def assignBlockToSheet(self):
-        def liesWithin(c1, c2, c3, c4, fittingPoint):
+        def is_inside_parallelogram(a, b, c, d, p):
+            x,y = p
+            vertices = []
+            vertices.extend([a, b, c, d])
             # Logic for checking if point belongs inside a Parallelogram
-            x, y = fittingPoint
-            minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            insideX = (minX <= x) and (x <= maxX)
-            insideY = (minY <= y) and (y <= maxY)
-            return (insideX and insideY)
-            inside = False
+            line_equations = []
+            for i in range(4):
+                x1, y1 = vertices[i]
+                x2, y2 = vertices[(i+1)%4]
+                # calculate the coefficients for the line equation: ax + by + c = 0
+                a = y2 - y1
+                b = x1 - x2
+                c = x2*y1 - x1*y2
+                line_equations.append((a, b, c))
+            # check whether the point is on the same side of each line as the rest of the parallelogram
+            for equation in line_equations:
+                a, b, c = equation
+                if a*x + b*y + c < 0:
+                    return False
+            return True
+
         
         # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
@@ -296,7 +306,7 @@ class Sheet:
                                     FittingsDF['Block Y'][fittingIndex])
                     # Only check for Fittings inside ModelSpace
                     if FittingsDF['Sheet'][fittingIndex] == 'Model':
-                        if liesWithin(corner1, corner2, corner3, corner4, fittingPoint):
+                        if is_inside_parallelogram(corner1, corner2, corner3, corner4, fittingPoint):
                             FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
                                 ViewportsDF['ID'][viewportIndex]
                             FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
@@ -374,7 +384,7 @@ class PyHelp():
                 entitiesCount = wait.wait_for_attribute(entities,"Count")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                    try:
+                    # try:
                         entity = wait.wait_for_method_return(entities, "Item", i)
                         entityName = wait.wait_for_attribute(entity, "EntityName")
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
@@ -394,9 +404,9 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    except Exception as e:
-                        errorCount += 1
-                        print(f"\tAttempt: {errorCount}", e)
+                    # except Exception as e:
+                    #     errorCount += 1
+                    #     print(f"\tAttempt: {errorCount}", e)
 
         self.sortViewportDF()
 
