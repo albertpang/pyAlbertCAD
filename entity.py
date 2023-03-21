@@ -14,6 +14,7 @@ class Entity:
         self.locationX = wait.wait_for_attribute(block, "insertionPoint")[0]
         self.locationY = wait.wait_for_attribute(block, "insertionPoint")[1]
 
+
 class Fitting(Entity):
     def __init__(self, block, layout):
         super().__init__(block, layout)
@@ -29,26 +30,18 @@ class Fitting(Entity):
         else:
             self.BlockName = block.Name
 
+
 class Text(Entity):
     def __init__(self, block, layout):
         super().__init__(block, layout)
         self.text = wait.wait_for_attribute(block, "textString")
-    #     self.format_string(block)
-    
-    # def format_string(self, block):
-    #     self.unformattedText = wait.wait_for_attribute(block, "textString")
-    #     exclude_list = ('P', 'S')
-    #     self.unformattedText = re.sub(r'\{?\\[^%s][^;]+;' % ''.join(exclude_list), '', self.unformattedText)
-    #     self.unformattedText = re.sub(r'\}', '', self.unformattedText)
-    #     print(self.unformattedText)
-    #     return self.unformattedText
 
 
 class Viewport(Entity):
     def __init__(self, block, layout):
-        block.ViewportOn = False
         wait.wait_for_attribute(block, "ViewportOn")
-        block.ViewportOn = True
+        wait.set_attribute(block, "ViewportOn", False)
+        wait.set_attribute(block, "ViewportOn", True) 
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.center = wait.wait_for_attribute(block, "Center")
         self.height = wait.wait_for_attribute(block, "Height")
@@ -57,7 +50,7 @@ class Viewport(Entity):
         self.sheet = wait.wait_for_attribute(layout, "Name")
         self.numFrozenLayers = self.count_frozen_layers()
         self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
-        self.scale = round(block.CustomScale, 3)
+        self.scale = round(wait.wait_for_attribute(block, "CustomScale"), 3)
         self.msCenter = self.XData[1][4]
 
         # PaperSpace Coordinates for Viewport
@@ -143,8 +136,6 @@ class Viewport(Entity):
         self.msCorner3 = (msCorner3[0], msCorner3[1])
         self.msCorner4 = (msCorner4[0], msCorner4[1])
         
-        
-
 
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
@@ -181,6 +172,7 @@ class Line(Entity):
         slope = (y2 - y1) / (x2 - x1)
         return round(slope, 3)
 
+
 class PolyLine(Line):
 
     def __init__(self, block, layout, DF):
@@ -211,5 +203,3 @@ class PolyLine(Line):
                                             self.startX, self.startY, 
                                             self.endX, self.endY, self.length,
                                             self.slope]
-
-                

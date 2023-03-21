@@ -21,8 +21,10 @@ def set_attribute(obj, attr_name, arg):
         try:
             # Try to get the attribute value
             setattr(obj, attr_name, arg)
+            return 0
         except:
             # If an exception occurs, wait for a short time and try again
+            print("Here")
             time.sleep(0.1)
 
 def wait_for_method_return(obj, method_name, *args):
