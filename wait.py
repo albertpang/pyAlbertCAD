@@ -13,6 +13,20 @@ def wait_for_attribute(obj, attr_name, *args):
             # If an exception occurs, wait for a short time and try again
             time.sleep(0.1)
 
+def set_attribute(obj, attr_name, arg):
+    """
+    Waits for a CDispatch attribute to be retrieved.
+    """
+    while True:
+        try:
+            # Try to get the attribute value
+            setattr(obj, attr_name, arg)
+            return 0
+        except:
+            # If an exception occurs, wait for a short time and try again
+            print("Here")
+            time.sleep(0.1)
+
 def wait_for_method_return(obj, method_name, *args):
     """
     Waits for a CDispatch method to return a value.

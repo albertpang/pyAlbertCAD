@@ -1,3 +1,4 @@
+import math
 import win32com.client
 from pywintypes import com_error
 from shapely.geometry import Point
@@ -261,22 +262,55 @@ class Sheet:
 
 
     def assignBlockToSheet(self):
-        def liesWithin(c1, c2, c3, c4, fittingPoint):
-            # Logic for checking if point belongs inside a Parallelogram
-            point = Point(fittingPoint)
-            polygon = Polygon([c1, c2, c3, c4])
-            return (polygon.contains(point))
-            # x, y = fittingPoint
+        def is_inside_quadrilateral(a, b, c, d, p):
+            # Compute winding numbers
+            wn_abp = compute_winding_number(a, b, p)
+            wn_bcp = compute_winding_number(b, c, p)
+            wn_cdp = compute_winding_number(c, d, p)
+            wn_dap = compute_winding_number(d, a, p)
 
-            # minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            # maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            # minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            # maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            # insideX = (minX <= x) and (x <= maxX)
-            # insideY = (minY <= y) and (y <= maxY)
-            # return (insideX and insideY)
-            # inside = False
-        
+            # Check if point is inside quadrilateral
+            if (wn_abp == wn_bcp == wn_cdp == wn_dap) and (wn_abp != 0):
+                return True
+            else:
+                return False
+
+        def compute_winding_number(start, end, point):
+            # Compute vector from start to point
+            v = (point[0] - start[0], point[1] - start[1])
+
+            # Compute vector from start to end
+            w = (end[0] - start[0], end[1] - start[1])
+
+            # Compute the 2D cross product of v and w
+            cross_product = (v[0] * w[1]) - (v[1] * w[0])
+
+            # Determine winding number based on sign of cross product
+            if cross_product > 0:
+                return 1
+            elif cross_product < 0:
+                return -1
+            else:
+                return 0
+            
+        def arrange_points_clockwise(a, b, c, d):
+            # Find centroid
+            centroid_x = (a[0] + b[0] + c[0] + d[0]) / 4
+            centroid_y = (a[1] + b[1] + c[1] + d[1]) / 4
+            centroid = (centroid_x, centroid_y)
+
+            # Compute angles between centroid and points
+            angles = []
+            for point in [a, b, c, d]:
+                x_diff = point[0] - centroid[0]
+                y_diff = point[1] - centroid[1]
+                angle = math.atan2(y_diff, x_diff)
+                angles.append(angle)
+
+            # Sort points by angle
+            sorted_points = [x for _, x in sorted(zip(angles, [a, b, c, d]))]
+            return sorted_points
+           
         # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
         FittingsDF['Matching Viewport Sheet'] = 'N/A'
@@ -286,8 +320,6 @@ class Sheet:
         viewportIndex, fittingIndex = 0, 0
         for viewportIndex in ViewportsDF.index:
             if ViewportsDF['Is BasePlan ModelSpace'][viewportIndex] == True:
-                # ccw rotation about corners
-                # 1 -> 3 -> 2 -> 4
                 corner1 = (ViewportsDF['ModelSpace Coordinate Corner1 X'][viewportIndex],
                                 ViewportsDF['ModelSpace Coordinate Corner1 Y'][viewportIndex])
                 corner2 = (ViewportsDF['ModelSpace Coordinate Corner2 X'][viewportIndex],
@@ -302,7 +334,7 @@ class Sheet:
                                     FittingsDF['Block Y'][fittingIndex])
                     # Only check for Fittings inside ModelSpace
                     if FittingsDF['Sheet'][fittingIndex] == 'Model':
-                        if liesWithin(corner1, corner2, corner3, corner4, fittingPoint):
+                        if is_inside_quadrilateral(corner1, corner2, corner3, corner4, fittingPoint):
                             FittingsDF.loc[fittingIndex, 'Matching Viewport ID'] = \
                                 ViewportsDF['ID'][viewportIndex]
                             FittingsDF.loc[fittingIndex, 'Matching Viewport Sheet'] = \
@@ -345,10 +377,10 @@ class PyHelp():
                     wait.wait_for_attribute(entity, "Width") < width)
         # Starts and ends within the bounds of the page
         def isWithinPage(entity):
-            corner1 = (entity.Center[0] - (abs(entity.Width) / 2), 
-                                entity.Center[1] + (abs(entity.Height) / 2))
-            corner2 = (entity.Center[0] + (abs(entity.Width) / 2), 
-                                entity.Center[1] - (abs(entity.Height) / 2))
+            corner1 = (wait.wait_for_attribute(entity, "Center")[0] - (abs(wait.wait_for_attribute(entity, "Width")) / 2), 
+                        wait.wait_for_attribute(entity, "Center")[1] + (abs(wait.wait_for_attribute(entity, "Height") / 2)))
+            corner2 = (wait.wait_for_attribute(entity, "Center")[0] + (abs(wait.wait_for_attribute(entity, "Width")) / 2), 
+                        wait.wait_for_attribute(entity, "Center")[1] - (abs(wait.wait_for_attribute(entity, "Height") / 2)))
             if (corner1[0] > 0 and corner1[1]  > 0 and 
                 corner2[0] > 0 and corner2[1] > 0):
                 return True
@@ -380,7 +412,7 @@ class PyHelp():
                 entitiesCount = wait.wait_for_attribute(entities,"Count")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                    try:
+                    # try:
                         entity = wait.wait_for_method_return(entities, "Item", i)
                         entityName = wait.wait_for_attribute(entity, "EntityName")
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
@@ -400,9 +432,9 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    except Exception as e:
-                        errorCount += 1
-                        print(f"\tAttempt: {errorCount}", e)
+                    # except Exception as e:
+                    #     errorCount += 1
+                    #     print(f"\tAttempt: {errorCount}", e)
 
         self.sortViewportDF()
 
