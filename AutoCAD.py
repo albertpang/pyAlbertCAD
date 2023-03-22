@@ -103,9 +103,9 @@ class Sheet:
                                                        "N/A", "N/A"]
                 # MLeader Object
                 elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
+                    print(wait..GetLeaderLineVertices(wait.wait_for_method_return(entity, "GetLeaderIndex", 0)))
                     # t = Text(entity, self.__layout.name)
                     # t.appendToDF(self.TextsDF)
-                    pass
                 elif entityObjectName == 'AcDbViewport':
                     pass
                 errorCount = 0 
@@ -234,6 +234,7 @@ class Sheet:
         None
         """
         def format():
+            '''Removes text style symbols attached to strings'''
             BillOfMaterialsDF['Associated Text String'] =            \
                 BillOfMaterialsDF['Associated Text String'].apply    \
                 (lambda x: re.sub(r'\\A1;', '', x))
@@ -264,6 +265,7 @@ class Sheet:
     def assignBlockToSheet(self):
         def is_inside_quadrilateral(a, b, c, d, p):
             # Compute winding numbers
+            a, b, c, d = arrange_points_clockwise(a, b, c, d)
             wn_abp = compute_winding_number(a, b, p)
             wn_bcp = compute_winding_number(b, c, p)
             wn_cdp = compute_winding_number(c, d, p)
@@ -342,8 +344,8 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        self.createAlbertLayer()
-        self.findViewports()
+        # self.createAlbertLayer()
+        # self.findViewports()
         self.findPaperSheets()
         self.removeAlbertTool()
 
@@ -412,7 +414,7 @@ class PyHelp():
                 entitiesCount = wait.wait_for_attribute(entities,"Count")
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                    # try:
+                    try:
                         entity = wait.wait_for_method_return(entities, "Item", i)
                         entityName = wait.wait_for_attribute(entity, "EntityName")
                         if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
@@ -432,9 +434,9 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    # except Exception as e:
-                    #     errorCount += 1
-                    #     print(f"\tAttempt: {errorCount}", e)
+                    except Exception as e:
+                        errorCount += 1
+                        print(f"\tAttempt: {errorCount}", e)
 
         self.sortViewportDF()
 
