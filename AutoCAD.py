@@ -1,5 +1,7 @@
 import win32com.client
 from pywintypes import com_error
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 import wait
 import numpy as np
 from ACAD_DataTypes import APoint
@@ -261,15 +263,19 @@ class Sheet:
     def assignBlockToSheet(self):
         def liesWithin(c1, c2, c3, c4, fittingPoint):
             # Logic for checking if point belongs inside a Parallelogram
-            x, y = fittingPoint
-            minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
-            minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
-            insideX = (minX <= x) and (x <= maxX)
-            insideY = (minY <= y) and (y <= maxY)
-            return (insideX and insideY)
-            inside = False
+            point = Point(fittingPoint)
+            polygon = Polygon([c1, c2, c3, c4])
+            return (polygon.contains(point))
+            # x, y = fittingPoint
+
+            # minX = min(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            # maxX = max(abs(c1[0]), abs(c2[0]), abs(c3[0]), abs(c4[0]))
+            # minY = min(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
+            # maxY = max(abs(c1[1]), abs(c2[1]), abs(c3[1]), abs(c4[1]))
+            # insideX = (minX <= x) and (x <= maxX)
+            # insideY = (minY <= y) and (y <= maxY)
+            # return (insideX and insideY)
+            # inside = False
         
         # Creating new ViewportsDF Column based on associted Viewport to Fitting
         FittingsDF['Matching Viewport ID'] = 'N/A'
