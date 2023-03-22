@@ -1,8 +1,7 @@
 import math
 import win32com.client
 from pywintypes import com_error
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
+import openpyxl
 import wait
 import numpy as np
 from ACAD_DataTypes import APoint
@@ -12,6 +11,7 @@ import re
 
 # Importing Class Objects
 from entity import Fitting, Line, PolyLine, Text, Viewport
+# , LeaderLine
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
@@ -35,6 +35,8 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
                                     'ModelSpace Coordinate Corner3 X', 'ModelSpace Coordinate Corner3 Y',
                                     'ModelSpace Coordinate Corner4 X', 'ModelSpace Coordinate Corner4 Y',
                                     ])
+
+MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', ''])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
@@ -64,34 +66,36 @@ class Sheet:
         entities = wait.wait_for_attribute(self.__layout, "Block")
         entitiesCount = wait.wait_for_attribute(entities, "Count") 
         i, errorCount = 0, 1
+        print(entitiesCount)
         while i < entitiesCount and errorCount <= 3:
-            # if i == (entitiesCount // 2):
-            #     print ("--- 50% done ---")
+            if i == (entitiesCount // 2):
+                print ("--- 50% done ---")
             try:
                 entity = wait.wait_for_method_return(entities, "Item", i)
+                print(i, entity)
                 entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
-
                 # Line Object
-                if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
-                    if entity.Length > 1:
-                        l = Line(entity, self.__layout.name, False)
-                        LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                                                           l.startX, l.startY, l.endX, 
-                                                           l.endY, l.length, l.slope]
+                # if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
+                #     if entity.Length > 1:
+                #         l = Line(entity, self.__layout.name, False)
+                #         LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                #                                            l.startX, l.startY, l.endX, 
+                #                                            l.endY, l.length, l.slope]
 
-                # Polyline
-                elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
-                    if entity.Length > 1:
-                        # If there are only two coordinates, convert Polyline into a line
-                        if len(entity.Coordinates) == 4:
-                            l = Line(entity, self.__layout.name, True)
-                            LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                                                               l.startX, l.startY, l.endX, 
-                                                               l.endY, l.length, l.slope]
-                        # Otherwise, it is an authentic Polyline
-                        else:
-                            pl = PolyLine(entity, self.__layout.name, LinesDF)
-                elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
+                # # Polyline
+                # elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
+                #     if entity.Length > 1:
+                #         # If there are only two coordinates, convert Polyline into a line
+                #         if len(entity.Coordinates) == 4:
+                #             l = Line(entity, self.__layout.name, True)
+                #             LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                #                                                l.startX, l.startY, l.endX, 
+                #                                                l.endY, l.length, l.slope]
+                #         # Otherwise, it is an authentic Polyline
+                #         else:
+                #             pl = PolyLine(entity, self.__layout.name, LinesDF)
+
+                if entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
                     f = Fitting(entity, self.__layout.name)
                     FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
                                                              f.locationX, f.locationY, "N/A", "N/A"]
@@ -102,17 +106,16 @@ class Sheet:
                                                        t.locationX, t.locationY, 
                                                        "N/A", "N/A"]
                 # MLeader Object
-                elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
-                    print(wait..GetLeaderLineVertices(wait.wait_for_method_return(entity, "GetLeaderIndex", 0)))
-                    # t = Text(entity, self.__layout.name)
-                    # t.appendToDF(self.TextsDF)
-                elif entityObjectName == 'AcDbViewport':
-                    pass
+                # elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
+                #     le = LeaderLine(entity, self.__layout.name)
+
+                # elif entityObjectName == 'AcDbViewport':
+                #     pass
                 errorCount = 0 
                 i += 1
             except com_error as e:
                 time.sleep(0.5)
-                print("here")
+                print("autocad Exception")
             except Exception as e:
                 errorCount += 1
                 print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
@@ -167,6 +170,7 @@ class Sheet:
             x2 = FittingsDF['Block X'][fittingIndex]
             y2 = FittingsDF['Block Y'][fittingIndex]
             for lineIndex in LinesDF.index:
+                print(fittingIndex, lineIndex)
                 x1 = LinesDF['Start X'][lineIndex]
                 y1 = LinesDF['Start Y'][lineIndex]
                 x3 = LinesDF['End X'][lineIndex]
@@ -192,6 +196,7 @@ class Sheet:
 
         print("Associating Texts by Distance")        
         for sheet_name, group in TextsDF.groupby('Sheet'):
+            print(sheet_name)
             # Iterate over rows within the current sheet group
             for textIndex in group.index:
                 minDistance = 999
@@ -344,10 +349,15 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        # self.createAlbertLayer()
-        # self.findViewports()
+        self.layoutList = []
+        layouts = wait.wait_for_attribute(doc, "Layouts")
+        for layout in layouts:
+            self.layoutList.append(layout.Name)
+        self.createAlbertLayer()
+        self.findViewports()
         self.findPaperSheets()
         self.removeAlbertTool()
+
 
 
     def createAlbertLayer(self):
@@ -388,7 +398,6 @@ class PyHelp():
                 return True
             else:
                 return False
-            
         return (isViewPortSize(layout, entity) and isWithinPage(entity))
 
 
@@ -399,26 +408,24 @@ class PyHelp():
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
-        for layout in layouts:
-            print(wait.wait_for_attribute(layout, "Name"))
-            if layout.Name != "Model":
-                doc.ActiveLayout = doc.Layouts(wait.wait_for_attribute(layout, "Name"))
-                paperFlag = False
-                while paperFlag == False:
-                    try: 
-                        doc.SendCommand("pspace z a  ")
-                        paperFlag = True
-                    except:
-                        break
-                entities = wait.wait_for_attribute(layout, "Block")
+
+        for layout in self.layoutList:
+            print(layout)
+            
+            if layout != "Model":
+                wait.set_attribute(doc, "ActiveLayout", wait.wait_for_method_return(doc, "Layouts", layout))
+                currentLayout = wait.wait_for_attribute(doc, "ActiveLayout")
+                wait.wait_for_method_return(doc, "SendCommand", "pspace z a  ")
+
+                entities = wait.wait_for_attribute(currentLayout, "Block")
                 entitiesCount = wait.wait_for_attribute(entities,"Count")
+
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                    try:
                         entity = wait.wait_for_method_return(entities, "Item", i)
                         entityName = wait.wait_for_attribute(entity, "EntityName")
-                        if entityName == "AcDbViewport" and self.validateViewport(entity, layout):
-                            vp = Viewport(entity, layout)
+                        if entityName == "AcDbViewport" and self.validateViewport(entity, currentLayout):
+                            vp = Viewport(entity, currentLayout)
                             ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
                                                                        vp.height, vp.type, vp.isCenter,
                                                                        vp.numFrozenLayers, False,
@@ -434,10 +441,6 @@ class PyHelp():
                             # Group by Sheet and find the Viewport with the fewest frozen layer
                             errorCount = 0
                         i += 1
-                    except Exception as e:
-                        errorCount += 1
-                        print(f"\tAttempt: {errorCount}", e)
-
         self.sortViewportDF()
 
 
@@ -456,27 +459,29 @@ class PyHelp():
         skipModelSpace = False
         inModelSpace = True
         print("Finding Blocks")
-        for layout in acad.activeDocument.layouts:
+        for layout in self.layoutList:
+            print(layout)
+            wait.set_attribute(doc, "ActiveLayout", wait.wait_for_method_return(doc, "Layouts", layout))
+            currentLayout = wait.wait_for_attribute(doc, "ActiveLayout")
             # Skip Model Space
             if skipModelSpace:
                 # On Model Space Sheet
-                if inModelSpace:
-                    inModelSpace = False
+                if layout == "Model":
                     continue
                 # Any Paper Sheet
                 else:
-                    s = Sheet(layout)
+                    s = Sheet(currentLayout)
                     s.findBlocks()
             # Don't Skip Model Space
             else:
-                if inModelSpace:
-                    s = Sheet(layout)
+                if layout == "Model":
+                    s = Sheet(currentLayout)
                     s.findBlocks()
                     s.findFittingSize()
                     inModelSpace = False
                     continue
                 else:
-                    s = Sheet(layout)
+                    s = Sheet(currentLayout)
                     s.findBlocks()
 
         s.findAssociatedText()
@@ -499,6 +504,7 @@ def saveDF():
     LinesDF.to_csv('LinesCSV')
     print("-Logged to Lines")
     FittingsDF.to_csv('FittingsCSV')
+    FittingsDF.to_excel('FittingExcel.xlsx')
     print("--Logged to Fittings")
     TextsDF.to_csv('TextsCSV')
     print("---Logged to Texts")

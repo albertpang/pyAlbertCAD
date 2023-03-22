@@ -1,12 +1,15 @@
-import re
-import shapely
 import pandas as pd
 import math
 import wait
 import win32com.client
 from ACAD_DataTypes import APoint
+import time
+
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
+
+'''WRAP ALL ATTRIBUTES AND METHODS USING WAIT CLASS FUNCTIONS OTHERWISE
+YOU WILL GET A COM_ERROR.'''
 
 class Entity:
     def __init__(self, block, layout):
@@ -18,18 +21,22 @@ class Entity:
 
 class Fitting(Entity):
     def __init__(self, block, layout):
+        '''Initailize a Fitting Object based on Block Type'''
         super().__init__(block, layout)
+        # Check if the blocks are Dynamic. This changes how properties are held
         if block.IsDynamicBlock:
-            blockDynamicProperties = block.GetDynamicBlockProperties()
-
+            blockDynamicProperties = wait.wait_for_method_return(block, "GetDynamicBlockProperties")
+            # Isolate the block Fitting Type
             for prop in blockDynamicProperties:
                 # InHouse Palette use DBlock -- Vis1 To store Name
-                if prop.PropertyName == 'Visibility1':
-                    self.BlockName = prop.Value
+                if wait.wait_for_attribute(prop, "PropertyName") == 'Visibility1':
+                    self.BlockName = wait.wait_for_attribute(prop, "Value")
                     return
-            self.BlockName = block.EffectiveName
+            # Sometimes the Name of a Dynamic Block is held in EffectiveName tag
+            self.BlockName = wait.wait_for_attribute(block, "EffectiveName")
+        # If not a Dynamic Block, we can just check Name field for the Fitting
         else:
-            self.BlockName = block.Name
+            self.BlockName = wait.wait_for_attribute(block, "Name")
 
 
 class Text(Entity):
@@ -40,9 +47,15 @@ class Text(Entity):
 
 class Viewport(Entity):
     def __init__(self, block, layout):
-        wait.wait_for_attribute(block, "ViewportOn")
-        wait.set_attribute(block, "ViewportOn", False)
-        wait.set_attribute(block, "ViewportOn", True) 
+        '''Initailize a Viewport Object based on Block Type'''
+        while True:
+            try:
+                setattr(block, "ViewportOn", False)
+                setattr(block, "ViewportOn", True)
+                break
+            except:
+                print("Viewport ERROR")
+                continue
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.center = wait.wait_for_attribute(block, "Center")
         self.height = wait.wait_for_attribute(block, "Height")
@@ -77,7 +90,8 @@ class Viewport(Entity):
                                    psCorner3Point, psCorner4Point)
 
     def count_frozen_layers(self):
-        """ Uses block.getXData() to count all "Freeze VP" Layers """
+        """ Uses block.GetXData() to count all "Freeze VP" Layers. Used to find
+         most likely main ModelSpace viewport."""
         self.numFrozenLayers = 0 
         for data in self.XData[0]:
             if data == 1003:
@@ -85,7 +99,12 @@ class Viewport(Entity):
         return self.numFrozenLayers
     
     def is_center_viewport(self):
-        def liesWithin(cp, c1, c2):
+        '''Checks if Viewport contains the midpoint of a papersheet. Creates 
+        priority for finding the ModelSpace viewport of a sheet.'''
+
+        def liesWithin(cp, c1, c2) -> bool:
+            '''Assuming a viewport is relatively rectangular, does it contain
+            the midpoint of the papersheet'''
             x, y = cp
             minX = min(c1[0], c2[0])
             maxX = max(c1[0], c2[0])
@@ -95,6 +114,7 @@ class Viewport(Entity):
             insideY = (minY <= y <= maxY)
             return (insideX and insideY)
         
+        # Constant unit conversion
         PIXELtoINCH = 25.4
         self.sheetHeight /= PIXELtoINCH
         self.sheetWidth /= PIXELtoINCH
@@ -145,11 +165,13 @@ class Line(Entity):
         self.layer = block.Layer
         self.length = block.length
 
+        # Get PolyLine Coordinates of a Single segment
         if isPolyline:
             self.startX = block.Coordinates[0]
             self.startY = block.Coordinates[1]
             self.endX = block.Coordinates[2]
             self.endY = block.Coordinates[3]
+        # Get Line Coordinates
         else:
             self.startX = block.StartPoint[0]
             self.startY = block.StartPoint[1]
@@ -161,11 +183,13 @@ class Line(Entity):
 
 
     def calculateLength(self, x1, y1, x2, y2):
+        '''Calculates Distance of a line'''
         length = math.dist([x1, y1], [x2, y2])
         return round(length, 2)
 
 
     def calculateSlope(self, x1, y1, x2, y2):
+        '''Calculates Slope of a line'''
         if (x2 - x1) == 0:
             return "undef"
         if (y2 - y1) == 0:
@@ -175,16 +199,16 @@ class Line(Entity):
 
 
 class PolyLine(Line):
-
     def __init__(self, block, layout, DF):
+
         self.block = block
         self.sheet = layout
         self.layer = block.Layer
         self.DF = DF
         
-    
 
     def breakPolyline(self):
+        '''This breaks down polylines into individual lines for LinesDF'''
         i = 0
         while i < len(self.block.Coordinates) - 2:
             self.startX = self.block.Coordinates[i]
@@ -204,3 +228,25 @@ class PolyLine(Line):
                                             self.startX, self.startY, 
                                             self.endX, self.endY, self.length,
                                             self.slope]
+        
+
+# class LeaderLine(Entity):
+#     def __init__(self, block, layout):
+#         self.ID = wait.wait_for_attribute(block, "ObjectID")
+#         self.sheet = layout
+#         self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
+#         self.leaderlineIndexes = wait.wait_for_method_return(block, "GetLeaderLineIndexes")
+#         self.leaderlineIndex = wait.wait_for_method_return(block, "GetLeaderIndex")
+
+#     def break_leader_vertices(self):
+#         numberofVertices = len(self.leaderlineVertices)
+#         vertexList = 
+         
+#         for index, vertex in enum(self.leaderlineVertices):
+#             if index +
+
+#         for 
+#         calloutPointX, calloutPointY = self.leaderlineVertices
+
+
+        
