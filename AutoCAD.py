@@ -318,15 +318,19 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        self.layoutList = []
-        layouts = wait.wait_for_attribute(doc, "Layouts")
-        for layout in layouts:
-            self.layoutList.append(layout.Name)
         self.createAlbertLayer()
+        self.createLayoutList()
         self.findViewports()
         self.findPaperSheets()
         self.removeAlbertTool()
 
+    def createLayoutList(self):
+        '''Identifies all Layouts in Document and Sorts by Numerical Value'''
+        self.layoutList = []
+        layouts = wait.wait_for_attribute(doc, "Layouts")
+        for layout in layouts:
+            self.layoutList.append(layout.Name)
+        self.layoutList.sort(key=lambda x:x[2:])
 
     def createAlbertLayer(self):
         coordinateLayer = doc.layers.Add("AlbertToolLayer")
