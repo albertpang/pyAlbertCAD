@@ -55,7 +55,7 @@ class Sheet:
     def __init__(self, layout):
         self.__layout = layout
 
-    def findBlocks(self):
+    def find_blocks(self):
         """ Finds all the blocks in the current drawing and classifies them. 
         The information about these objects is then stored in respective data
         frames.
@@ -120,18 +120,18 @@ class Sheet:
                 print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
     
     
-    def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
+    def is_collinear(self, x1, y1, x2, y2, x3, y3) -> bool:
         """ Checks if three points are collinear."""
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
     
         
-    def calculateDistance(self, x1, y1, x2, y2) -> float:
+    def calc_distance(self, x1, y1, x2, y2) -> float:
         """Calculates the Euclidean distance between two points in a 2D space."""
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
 
 
-    def findFittingSize(self):
+    def find_fitting_size(self):
         """Associates all fittings with a Line ID based on collinearity."""
         print("Associating ModelSpace Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
@@ -139,19 +139,18 @@ class Sheet:
             x2 = FittingsDF['Block X'][fittingIndex]
             y2 = FittingsDF['Block Y'][fittingIndex]
             for lineIndex in LinesDF.index:
-                print(fittingIndex, lineIndex)
                 x1 = LinesDF['Start X'][lineIndex]
                 y1 = LinesDF['Start Y'][lineIndex]
                 x3 = LinesDF['End X'][lineIndex]
                 y3 = LinesDF['End Y'][lineIndex]
-                if self.isCollinear(x1, y1, x2, y2, x3, y3):
+                if self.is_collinear(x1, y1, x2, y2, x3, y3):
                     FittingsDF.loc[fittingIndex, 'Matching Line ID'] = \
                         LinesDF['ID'][lineIndex]
                     FittingsDF.loc[fittingIndex, 'Matching Line Length'] = \
                         LinesDF['Length'][lineIndex]
     
     
-    def findAssociatedText(self):
+    def find_assoc_text(self):
         # Currently O(n^2)
         """Associates text blocks in a sheet with the nearest text block.
 
@@ -176,7 +175,7 @@ class Sheet:
                     if relativeTextIndex != textIndex:
                         x2 = group.loc[relativeTextIndex, 'Block X']
                         y2 =group.loc[relativeTextIndex, 'Block Y']
-                        distance = self.calculateDistance(x1, y1, x2, y2)
+                        distance = self.calc_distance(x1, y1, x2, y2)
                         if distance < minDistance:
                             minDistance = distance
                             minIndex = relativeTextIndex
@@ -193,7 +192,7 @@ class Sheet:
                       f"{TextsDF['Associated Text String'][textIndex]}")
 
 
-    def findBillOfMaterials(self):  
+    def find_bill_of_materials(self):  
         """Identify the bill of materials in the TextsDF DataFrame, extract the
         relevant information, and store it in the BillOfMaterialsDF DataFrame.
 
@@ -236,7 +235,7 @@ class Sheet:
         BillOfMaterialsDF.drop(['Fitting List'], axis=1, inplace= True)
 
 
-    def assignBlockToSheet(self):
+    def assign_block_to_sheet(self):
         def is_inside_quadrilateral(a, b, c, d, p):
             # Compute winding numbers
             a, b, c, d = arrange_points_clockwise(a, b, c, d)
@@ -318,13 +317,13 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        self.createAlbertLayer()
-        self.createLayoutList()
-        self.findViewports()
-        self.findPaperSheets()
-        self.removeAlbertTool()
+        self.create_albert_layer()
+        self.create_layout_list()
+        self.find_viewports()
+        self.find_papersheets()
+        self.remove_albert_layer()
 
-    def createLayoutList(self):
+    def create_layout_list(self):
         '''Identifies all Layouts in Document and Sorts by Numerical Value'''
         self.layoutList = []
         layouts = wait.wait_for_attribute(doc, "Layouts")
@@ -332,13 +331,15 @@ class PyHelp():
             self.layoutList.append(layout.Name)
         self.layoutList.sort(key=lambda x:x[2:])
 
-    def createAlbertLayer(self):
+    def create_albert_layer(self):
+        '''Creates the layer property to use for all required PyHelp methods'''
         coordinateLayer = doc.layers.Add("AlbertToolLayer")
         coordinateLayer.LayerOn
         coordinateLayer.color = 40
 
 
-    def removeAlbertTool(self):
+    def remove_albert_layer(self):
+        '''Removes all items that use AlbertLayer in the document'''
         print("Removing Albert's Calculation Linework")
         for index, row in LinesDF.iterrows():
         # Check if the layer of the current row is 'AlbertToolLayer'
@@ -350,10 +351,10 @@ class PyHelp():
                 print("Failed")
 
 
-    def validateViewport(self, entity):
+    def validate_viewport(self, entity):
         '''Returns Boolean of Viewport Entity fitting within Sheet and lying within Sheet'''
         # Fits within the bounds of the page
-        def isViewPortSize(entity):
+        def is_viewport_size(entity):
             '''Check if Viewport is smaller than the Sheet'''
             PIXELtoINCH = 25.4
             layoutPixelWidth = self.layoutWidth / PIXELtoINCH
@@ -362,7 +363,7 @@ class PyHelp():
                     (wait.wait_for_attribute(entity, "Width") < layoutPixelWidth))
         
         # Starts and ends within the bounds of the page
-        def isWithinPage(entity):
+        def is_within_page(entity):
             '''Check if Viewport is fully within the Page'''
             corner1 = (wait.wait_for_attribute(entity, "Center")[0] - (abs(wait.wait_for_attribute(entity, "Width")) / 2), 
                         wait.wait_for_attribute(entity, "Center")[1] + (abs(wait.wait_for_attribute(entity, "Height") / 2)))
@@ -373,10 +374,10 @@ class PyHelp():
                 return True
             else:
                 return False
-        return (isViewPortSize(entity) and isWithinPage(entity))
+        return (is_viewport_size(entity) and is_within_page(entity))
 
 
-    def findViewports(self):
+    def find_viewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
         layouts = wait.wait_for_attribute(doc, "Layouts")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
@@ -398,7 +399,7 @@ class PyHelp():
                 while i < entitiesCount and errorCount < 3:
                     entity = wait.wait_for_method_return(entities, "Item", i)
                     entityName = wait.wait_for_attribute(entity, "EntityName")
-                    if entityName == "AcDbViewport" and self.validateViewport(entity):
+                    if entityName == "AcDbViewport" and self.validate_viewport(entity):
                         vp = Viewport(entity, currentLayout)
                         ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
                                                                     vp.height, vp.type, vp.isCenter,
@@ -415,10 +416,10 @@ class PyHelp():
                         # Group by Sheet and find the Viewport with the fewest frozen layer
                     errorCount = 0
                     i += 1
-        self.sortViewportDF()
+        self.sort_viewport_dataframe()
 
 
-    def sortViewportDF(self):
+    def sort_viewport_dataframe(self):
         _msViewportDF = ViewportsDF[ViewportsDF['Type'] == "Model View"].reset_index(drop=True)
         _msOverlapDF = _msViewportDF[_msViewportDF['Overlaps Center'] == True].reset_index(drop=True)
         indexMinList = _msOverlapDF.groupby('Sheet')['Num of Frozen Layers'].idxmin().to_list()
@@ -428,7 +429,7 @@ class PyHelp():
             ViewportsDF.loc[vpIndex, 'Is BasePlan ModelSpace'] = True
 
 
-    def findPaperSheets(self):
+    def find_papersheets(self):
         # , linesDF, FittingsDF, TextsDF
         skipModelSpace = False
         inModelSpace = True
@@ -445,25 +446,25 @@ class PyHelp():
                 # Any Paper Sheet
                 else:
                     s = Sheet(currentLayout)
-                    s.findBlocks()
+                    s.find_blocks()
             # Don't Skip Model Space
             else:
                 if layout == "Model":
                     s = Sheet(currentLayout)
-                    s.findBlocks()
-                    s.findFittingSize()
+                    s.find_blocks()
+                    s.find_fitting_size()
                     inModelSpace = False
                     continue
                 else:
                     s = Sheet(currentLayout)
-                    s.findBlocks()
+                    s.find_blocks()
 
-        s.findAssociatedText()
-        s.findBillOfMaterials()
-        s.assignBlockToSheet()
+        s.find_assoc_text()
+        s.find_bill_of_materials()
+        s.assign_block_to_sheet()
 
 
-def saveDF():
+def save_dataframe():
     """Save the DataFrame objects to CSV files.
 
     The function saves each of the four DataFrame objects to a separate CSV file.
@@ -488,4 +489,4 @@ def saveDF():
     print("-----Logged to ViewportsCSV")
 
 p = PyHelp()
-saveDF()
+save_dataframe()
