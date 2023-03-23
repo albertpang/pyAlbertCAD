@@ -48,7 +48,7 @@ def wait_for_method_return(obj, method_name, *args):
             return return_value
         except:
             # If an exception occurs, wait for a short time and try again
-            time.sleep(0.3)
+            time.sleep(0.1)
             counter += 1
             if counter > 5:
                 break
