@@ -232,23 +232,29 @@ class PolyLine(Line):
                                             self.slope]
         
 
-# class LeaderLine(Entity):
-#     def __init__(self, block, layout):
-#         self.ID = wait.wait_for_attribute(block, "ObjectID")
-#         self.sheet = layout
-#         self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
-#         self.leaderlineIndexes = wait.wait_for_method_return(block, "GetLeaderLineIndexes")
-#         self.leaderlineIndex = wait.wait_for_method_return(block, "GetLeaderIndex")
-
-#     def break_leader_vertices(self):
-#         numberofVertices = len(self.leaderlineVertices)
-#         vertexList = 
-         
-#         for index, vertex in enum(self.leaderlineVertices):
-#             if index +
-
-#         for 
-#         calloutPointX, calloutPointY = self.leaderlineVertices
+class LeaderLine(Entity):
+    def __init__(self, block, layout):
+        self.ID = wait.wait_for_attribute(block, "ObjectID")
+        self.sheet = layout
+        self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
+        if self.leaderlineVertices == None:
+            # Introduce Way to get coordinate of mleader
+            self.startVertexCoordinateX = 0 
+            self.startVertexCoordinateY = 0
+            self.endVertexCoordinateX = 'N/A'
+            self.endVertexCoordinateY = 'N/A'
+        else:
+            self.break_leader_vertices()    
 
 
+    def break_leader_vertices(self):
+        '''Find all the Vertice of MLeader, Then break it down into Start and End Vertex'''
+        numberofVertices = len(self.leaderlineVertices)
+        vertexList = []
+        for i in range(0, numberofVertices, 3):
+            vertex = (self.leaderlineVertices[i], self.leaderlineVertices[i+1])
+            vertexList.append(vertex)
+
+        self.startVertexCoordinateX, self.startVertexCoordinateY = vertexList[0]
+        self.endVertexCoordinateX, self.endVertexCoordinateY = vertexList[-1]
         

@@ -11,9 +11,8 @@ import time
 import re
 
 # Importing Class Objects
-from entity import Fitting, Line, PolyLine, Text, Viewport
+from entity import Fitting, Line, PolyLine, Text, Viewport, LeaderLine
 from EntityDataframes import *
-# , LeaderLine
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
@@ -30,10 +29,6 @@ class Sheet:
         """ Finds all the blocks in the current drawing and classifies them. 
         The information about these objects is then stored in respective data
         frames.
-
-        Raises:
-            Exception: If there is an error while iterating over the entities 
-            in the layout.
         """
         entities = wait.wait_for_attribute(self.__layout, "Block")
         entitiesCount = wait.wait_for_attribute(entities, "Count") 
@@ -41,54 +36,60 @@ class Sheet:
         while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
-            try:
-                entity = wait.wait_for_method_return(entities, "Item", i)
-                entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
-                # Line Object
-                if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
-                    if entity.Length > 1:
-                        l = Line(entity, self.__layout.name, False)
+            # try:
+            entity = wait.wait_for_method_return(entities, "Item", i)
+            entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
+            # Line Object
+            if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
+                if entity.Length > 1:
+                    l = Line(entity, self.__layout.name, False)
+                    LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                                                        l.startX, l.startY, l.endX, 
+                                                        l.endY, l.length, l.slope]
+
+            # Polyline
+            elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
+                if entity.Length > 1:
+                    # If there are only two coordinates, convert Polyline into a line
+                    if len(entity.Coordinates) == 4:
+                        l = Line(entity, self.__layout.name, True)
                         LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                                                           l.startX, l.startY, l.endX, 
-                                                           l.endY, l.length, l.slope]
+                                                            l.startX, l.startY, l.endX, 
+                                                            l.endY, l.length, l.slope]
+                    # Otherwise, it is an authentic Polyline
+                    else:
+                        pl = PolyLine(entity, self.__layout.name, LinesDF)
 
-                # Polyline
-                elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
-                    if entity.Length > 1:
-                        # If there are only two coordinates, convert Polyline into a line
-                        if len(entity.Coordinates) == 4:
-                            l = Line(entity, self.__layout.name, True)
-                            LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                                                               l.startX, l.startY, l.endX, 
-                                                               l.endY, l.length, l.slope]
-                        # Otherwise, it is an authentic Polyline
-                        else:
-                            pl = PolyLine(entity, self.__layout.name, LinesDF)
+            if entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
+                f = Fitting(entity, self.__layout.name)
+                FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
+                                                            f.locationX, f.locationY, "N/A", "N/A"]
+                
+            # Text Items
+            elif (entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText'):
+                t = Text(entity, self.__layout.name)
+                TextsDF.loc[len(TextsDF.index)] = [t.ID, t.sheet, t.text, 
+                                                    t.locationX, t.locationY, 
+                                                    "N/A", "N/A"
+                                                    ]
+            # MLeader Object
+            elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
+                le = LeaderLine(entity, self.__layout.name)
+                MLeadersDF.loc[len(MLeadersDF.index)] = [le.ID, le.sheet, le.startVertexCoordinateX, 
+                                                    le.startVertexCoordinateY, le.endVertexCoordinateX, 
+                                                    le.endVertexCoordinateY, "N/A", "N/A", "N/A"
+                                                    ]
 
-                if entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
-                    f = Fitting(entity, self.__layout.name)
-                    FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
-                                                             f.locationX, f.locationY, "N/A", "N/A"]
-                # Text Items
-                elif (entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText'):
-                    t = Text(entity, self.__layout.name)
-                    TextsDF.loc[len(TextsDF.index)] = [t.ID, t.sheet, t.text, 
-                                                       t.locationX, t.locationY, 
-                                                       "N/A", "N/A"]
-                # MLeader Object
-                # elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
-                #     le = LeaderLine(entity, self.__layout.name)
-
-                # elif entityObjectName == 'AcDbViewport':
-                #     pass
-                errorCount = 0 
-                i += 1
-            except com_error as e:
-                time.sleep(0.5)
-                print("autocad Exception")
-            except Exception as e:
-                errorCount += 1
-                print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
+            # elif entityObjectName == 'AcDbViewport':
+            #     pass
+            errorCount = 0 
+            i += 1
+            # except com_error as e:
+            #     time.sleep(0.5)
+            #     print("autocad Exception")
+            # except Exception as e:
+            #     errorCount += 1
+            #     print(f"\tAttempt: {errorCount}", i, entityObjectName, e)
     
     
     def is_collinear(self, x1, y1, x2, y2, x3, y3) -> bool:
@@ -119,8 +120,27 @@ class Sheet:
                         LinesDF['ID'][lineIndex]
                     FittingsDF.loc[fittingIndex, 'Matching Line Length'] = \
                         LinesDF['Length'][lineIndex]
-    
-    
+                    
+    def find_line_size(self):
+        """Associates all fittings with a Line ID based on collinearity."""
+        print("Associating ModelLeader to Lines")
+        mleaderIndex, lineIndex = 0, 0
+        for mleaderIndex in MLeadersDF.index:
+            x2 = MLeadersDF['Starting Vertex Coordinate X'][mleaderIndex]
+            y2 = MLeadersDF['Starting Vertex Coordinate Y'][mleaderIndex]
+            for lineIndex in LinesDF.index:
+                x1 = LinesDF['Start X'][lineIndex]
+                y1 = LinesDF['Start Y'][lineIndex]
+                x3 = LinesDF['End X'][lineIndex]
+                y3 = LinesDF['End Y'][lineIndex]
+                if self.is_collinear(x1, y1, x2, y2, x3, y3):
+                    MLeadersDF.loc[mleaderIndex, 'Matching Line ID'] = \
+                        LinesDF['ID'][lineIndex]
+                    MLeadersDF.loc[mleaderIndex, 'Matching Line Layer'] = \
+                        LinesDF['Layer'][lineIndex]
+                    MLeadersDF.loc[mleaderIndex, 'Matching Line Length'] = \
+                        LinesDF['Length'][lineIndex]
+                    
     def find_assoc_text(self):
         # Currently O(n^2)
         """Associates text blocks in a sheet with the nearest text block.
@@ -224,13 +244,10 @@ class Sheet:
         def compute_winding_number(start, end, point):
             # Compute vector from start to point
             v = (point[0] - start[0], point[1] - start[1])
-
             # Compute vector from start to end
             w = (end[0] - start[0], end[1] - start[1])
-
             # Compute the 2D cross product of v and w
             cross_product = (v[0] * w[1]) - (v[1] * w[0])
-
             # Determine winding number based on sign of cross product
             if cross_product > 0:
                 return 1
@@ -240,6 +257,7 @@ class Sheet:
                 return 0
             
         def arrange_points_clockwise(a, b, c, d):
+            '''Sort four points of a quadrilateral in a CW manner'''
             # Find centroid
             centroid_x = (a[0] + b[0] + c[0] + d[0]) / 4
             centroid_y = (a[1] + b[1] + c[1] + d[1]) / 4
@@ -288,10 +306,10 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        # self.create_albert_layer()
-        # self.create_layout_list()
+        self.create_albert_layer()
+        self.create_layout_list()
         # self.find_viewports()
-        # self.find_papersheets()
+        self.find_papersheets()
         self.remove_albert_layer()
 
     def create_layout_list(self):
@@ -424,6 +442,7 @@ class PyHelp():
                     s = Sheet(currentLayout)
                     s.find_blocks()
                     s.find_fitting_size()
+                    s.find_line_size()
                     inModelSpace = False
                     continue
                 else:

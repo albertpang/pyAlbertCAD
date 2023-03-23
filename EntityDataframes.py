@@ -20,7 +20,10 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
                                     'ModelSpace Coordinate Corner4 X', 'ModelSpace Coordinate Corner4 Y',
                                     ])
 
-MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', ''])
+MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', 'Starting Vertex Coordinate X', 'Starting Vertex Coordinate Y',
+                                   'Ending Vertex Coordinate X', 'Ending Vertex Coordinate Y', 'Matching Line ID',
+                                   'Matching Line Layer', 'Matching Line Length'
+                                   ])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 
@@ -47,3 +50,5 @@ def save_dataframe():
     print("----Logged to BOM")
     ViewportsDF.to_csv('ViewportsCSV')
     print("-----Logged to ViewportsCSV")
+    MLeadersDF.to_csv('MLeadersCSV')
+    print("------Logged to MLeadersCSV")
