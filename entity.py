@@ -1,3 +1,4 @@
+import inspect
 import pandas as pd
 import math
 import wait
@@ -50,12 +51,14 @@ class Viewport(Entity):
         '''Initailize a Viewport Object based on Block Type'''
         while True:
             try:
-                setattr(block, "ViewportOn", False)
-                setattr(block, "ViewportOn", True)
+                wait.set_attribute(block, "ViewportOn", False)
+                wait.set_attribute(block, "ViewportOn", True)
                 break
             except:
                 print("Viewport ERROR")
+                time.sleep(0.3)
                 continue
+
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.center = wait.wait_for_attribute(block, "Center")
         self.height = wait.wait_for_attribute(block, "Height")
@@ -63,7 +66,6 @@ class Viewport(Entity):
         self.XData = wait.wait_for_method_return(block, "GetXData" ,"")
         self.sheet = wait.wait_for_attribute(layout, "Name")
         self.numFrozenLayers = self.count_frozen_layers()
-        self.sheetHeight, self.sheetWidth = wait.wait_for_method_return(layout, "GetPaperSize")
         self.scale = round(wait.wait_for_attribute(block, "CustomScale"), 3)
         self.msCenter = self.XData[1][4]
 
@@ -101,6 +103,7 @@ class Viewport(Entity):
     def is_center_viewport(self):
         '''Checks if Viewport contains the midpoint of a papersheet. Creates 
         priority for finding the ModelSpace viewport of a sheet.'''
+        sheetHeight, sheetWidth  = wait.wait_for_method_return(wait.wait_for_attribute(doc, "ActiveLayout"), "GetPaperSize")
 
         def liesWithin(cp, c1, c2) -> bool:
             '''Assuming a viewport is relatively rectangular, does it contain
@@ -116,9 +119,9 @@ class Viewport(Entity):
         
         # Constant unit conversion
         PIXELtoINCH = 25.4
-        self.sheetHeight /= PIXELtoINCH
-        self.sheetWidth /= PIXELtoINCH
-        layoutCenter = (self.sheetHeight / 2), (self.sheetWidth / 2)
+        sheetHeight /= PIXELtoINCH
+        sheetWidth /= PIXELtoINCH
+        layoutCenter = (sheetHeight / 2), (sheetWidth / 2)
         return liesWithin(layoutCenter, self.psCorner1, self.psCorner2)
 
     def classify_viewport(self):

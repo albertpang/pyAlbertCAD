@@ -1,3 +1,4 @@
+
 import math
 import win32com.client
 from pywintypes import com_error
@@ -66,34 +67,32 @@ class Sheet:
         entities = wait.wait_for_attribute(self.__layout, "Block")
         entitiesCount = wait.wait_for_attribute(entities, "Count") 
         i, errorCount = 0, 1
-        print(entitiesCount)
         while i < entitiesCount and errorCount <= 3:
             if i == (entitiesCount // 2):
                 print ("--- 50% done ---")
             try:
                 entity = wait.wait_for_method_return(entities, "Item", i)
-                print(i, entity)
                 entityObjectName = wait.wait_for_attribute(entity, "ObjectName")
                 # Line Object
-                # if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
-                #     if entity.Length > 1:
-                #         l = Line(entity, self.__layout.name, False)
-                #         LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                #                                            l.startX, l.startY, l.endX, 
-                #                                            l.endY, l.length, l.slope]
+                if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
+                    if entity.Length > 1:
+                        l = Line(entity, self.__layout.name, False)
+                        LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                                                           l.startX, l.startY, l.endX, 
+                                                           l.endY, l.length, l.slope]
 
-                # # Polyline
-                # elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
-                #     if entity.Length > 1:
-                #         # If there are only two coordinates, convert Polyline into a line
-                #         if len(entity.Coordinates) == 4:
-                #             l = Line(entity, self.__layout.name, True)
-                #             LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
-                #                                                l.startX, l.startY, l.endX, 
-                #                                                l.endY, l.length, l.slope]
-                #         # Otherwise, it is an authentic Polyline
-                #         else:
-                #             pl = PolyLine(entity, self.__layout.name, LinesDF)
+                # Polyline
+                elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
+                    if entity.Length > 1:
+                        # If there are only two coordinates, convert Polyline into a line
+                        if len(entity.Coordinates) == 4:
+                            l = Line(entity, self.__layout.name, True)
+                            LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
+                                                               l.startX, l.startY, l.endX, 
+                                                               l.endY, l.length, l.slope]
+                        # Otherwise, it is an authentic Polyline
+                        else:
+                            pl = PolyLine(entity, self.__layout.name, LinesDF)
 
                 if entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
                     f = Fitting(entity, self.__layout.name)
@@ -122,48 +121,18 @@ class Sheet:
     
     
     def isCollinear(self, x1, y1, x2, y2, x3, y3) -> bool:
-        """ Checks if three points are collinear.
-
-        Parameters:
-            x1 (float): The x coordinate of the first point.
-            y1 (float): The y coordinate of the first point.
-            x2 (float): The x coordinate of the second point.
-            y2 (float): The y coordinate of the second point.
-            x3 (float): The x coordinate of the third point.
-            y3 (float): The y coordinate of the third point.
-
-        Returns:
-            bool: True if the points are collinear, False otherwise.
-        """
+        """ Checks if three points are collinear."""
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
     
         
     def calculateDistance(self, x1, y1, x2, y2) -> float:
-        """Calculates the Euclidean distance between two points in a 2D space.
-
-        Parameters:
-            self: The Sheet object.
-            x1 (int): The X coordinate of the first point.
-            y1 (int): The Y coordinate of the first point.
-            x2 (int): The X coordinate of the second point.
-            y2 (int): The Y coordinate of the second point.
-
-        Returns:
-            int: The Euclidean distance between the two points.
-        """
+        """Calculates the Euclidean distance between two points in a 2D space."""
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
 
 
     def findFittingSize(self):
-        """Associates all fittings with a Line ID based on collinearity.
-
-        Parameters:
-            self: The Sheet object.
-
-        Returns:
-            None
-        """
+        """Associates all fittings with a Line ID based on collinearity."""
         print("Associating ModelSpace Fittings to Lines")
         fittingIndex, lineIndex = 0, 0
         for fittingIndex in FittingsDF.index:
@@ -359,7 +328,6 @@ class PyHelp():
         self.removeAlbertTool()
 
 
-
     def createAlbertLayer(self):
         coordinateLayer = doc.layers.Add("AlbertToolLayer")
         coordinateLayer.LayerOn
@@ -378,17 +346,20 @@ class PyHelp():
                 print("Failed")
 
 
-    def validateViewport(self, entity, layout):
+    def validateViewport(self, entity):
+        '''Returns Boolean of Viewport Entity fitting within Sheet and lying within Sheet'''
         # Fits within the bounds of the page
-        def isViewPortSize(layout, entity):
+        def isViewPortSize(entity):
+            '''Check if Viewport is smaller than the Sheet'''
             PIXELtoINCH = 25.4
-            height, width = wait.wait_for_method_return(layout, "GetPaperSize")
-            width /= PIXELtoINCH
-            height /= PIXELtoINCH
-            return (wait.wait_for_attribute(entity, "Height") < height and 
-                    wait.wait_for_attribute(entity, "Width") < width)
+            layoutPixelWidth = self.layoutWidth / PIXELtoINCH
+            layoutPixelHeight = self.layoutHeight / PIXELtoINCH
+            return ((wait.wait_for_attribute(entity, "Height") < layoutPixelHeight) and 
+                    (wait.wait_for_attribute(entity, "Width") < layoutPixelWidth))
+        
         # Starts and ends within the bounds of the page
         def isWithinPage(entity):
+            '''Check if Viewport is fully within the Page'''
             corner1 = (wait.wait_for_attribute(entity, "Center")[0] - (abs(wait.wait_for_attribute(entity, "Width")) / 2), 
                         wait.wait_for_attribute(entity, "Center")[1] + (abs(wait.wait_for_attribute(entity, "Height") / 2)))
             corner2 = (wait.wait_for_attribute(entity, "Center")[0] + (abs(wait.wait_for_attribute(entity, "Width")) / 2), 
@@ -398,23 +369,22 @@ class PyHelp():
                 return True
             else:
                 return False
-        return (isViewPortSize(layout, entity) and isWithinPage(entity))
+        return (isViewPortSize(entity) and isWithinPage(entity))
 
 
     def findViewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
         layouts = wait.wait_for_attribute(doc, "Layouts")
-        numLayouts = wait.wait_for_attribute(layouts, "Count")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
 
         for layout in self.layoutList:
-            print(layout)
-            
             if layout != "Model":
                 wait.set_attribute(doc, "ActiveLayout", wait.wait_for_method_return(doc, "Layouts", layout))
                 currentLayout = wait.wait_for_attribute(doc, "ActiveLayout")
+                
+                self.layoutHeight, self.layoutWidth  = wait.wait_for_method_return(wait.wait_for_attribute(doc, "ActiveLayout"), "GetPaperSize")
                 wait.wait_for_method_return(doc, "SendCommand", "pspace z a  ")
 
                 entities = wait.wait_for_attribute(currentLayout, "Block")
@@ -422,25 +392,25 @@ class PyHelp():
 
                 i, errorCount = 0, 0
                 while i < entitiesCount and errorCount < 3:
-                        entity = wait.wait_for_method_return(entities, "Item", i)
-                        entityName = wait.wait_for_attribute(entity, "EntityName")
-                        if entityName == "AcDbViewport" and self.validateViewport(entity, currentLayout):
-                            vp = Viewport(entity, currentLayout)
-                            ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
-                                                                       vp.height, vp.type, vp.isCenter,
-                                                                       vp.numFrozenLayers, False,
-                                                                       vp.psCorner1[0], vp.psCorner1[1],
-                                                                       vp.psCorner2[0], vp.psCorner2[1],
-                                                                       vp.msCorner1[0], vp.msCorner1[1], 
-                                                                       vp.msCorner2[0], vp.msCorner2[1],
-                                                                       vp.psCorner3[0], vp.psCorner3[1],
-                                                                       vp.psCorner4[0], vp.psCorner4[1],
-                                                                       vp.msCorner3[0], vp.msCorner3[1], 
-                                                                       vp.msCorner4[0], vp.msCorner4[1],
-                                                                       ]
-                            # Group by Sheet and find the Viewport with the fewest frozen layer
-                            errorCount = 0
-                        i += 1
+                    entity = wait.wait_for_method_return(entities, "Item", i)
+                    entityName = wait.wait_for_attribute(entity, "EntityName")
+                    if entityName == "AcDbViewport" and self.validateViewport(entity):
+                        vp = Viewport(entity, currentLayout)
+                        ViewportsDF.loc[len(ViewportsDF.index)] = [vp.ID, vp.sheet, vp.width, 
+                                                                    vp.height, vp.type, vp.isCenter,
+                                                                    vp.numFrozenLayers, False,
+                                                                    vp.psCorner1[0], vp.psCorner1[1],
+                                                                    vp.psCorner2[0], vp.psCorner2[1],
+                                                                    vp.msCorner1[0], vp.msCorner1[1], 
+                                                                    vp.msCorner2[0], vp.msCorner2[1],
+                                                                    vp.psCorner3[0], vp.psCorner3[1],
+                                                                    vp.psCorner4[0], vp.psCorner4[1],
+                                                                    vp.msCorner3[0], vp.msCorner3[1], 
+                                                                    vp.msCorner4[0], vp.msCorner4[1],
+                                                                    ]
+                        # Group by Sheet and find the Viewport with the fewest frozen layer
+                    errorCount = 0
+                    i += 1
         self.sortViewportDF()
 
 

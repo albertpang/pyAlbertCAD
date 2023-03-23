@@ -24,7 +24,6 @@ def set_attribute(obj, attr_name, arg):
             return 0
         except:
             # If an exception occurs, wait for a short time and try again
-            print("stucks")
             time.sleep(0.1)
 
 def wait_for_method_return(obj, method_name, *args):
@@ -39,4 +38,4 @@ def wait_for_method_return(obj, method_name, *args):
             return return_value
         except:
             # If an exception occurs, wait for a short time and try again
-            time.sleep(0.1)
+            time.sleep(0.3)
