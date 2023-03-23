@@ -288,10 +288,10 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        self.create_albert_layer()
-        self.create_layout_list()
-        self.find_viewports()
-        self.find_papersheets()
+        # self.create_albert_layer()
+        # self.create_layout_list()
+        # self.find_viewports()
+        # self.find_papersheets()
         self.remove_albert_layer()
 
     def create_layout_list(self):
@@ -434,30 +434,6 @@ class PyHelp():
         s.find_bill_of_materials()
         s.assign_block_to_sheet()
 
-
-def save_dataframe():
-    """Save the DataFrame objects to CSV files.
-
-    The function saves each of the four DataFrame objects to a separate CSV file.
-    The file names are hardcoded as 'LinesCSV', 'FittingsCSV', 'TextsCSV', and
-    'BillOfMaterialsCSV', respectively. The function logs a message to the console
-    after each file is saved to indicate which DataFrame object was saved.
-
-    Returns:
-    None
-    """
-    print("Saving CSVs")
-    LinesDF.to_csv('LinesCSV')
-    print("-Logged to Lines")
-    FittingsDF.to_csv('FittingsCSV')
-    FittingsDF.to_excel('FittingExcel.xlsx')
-    print("--Logged to Fittings")
-    TextsDF.to_csv('TextsCSV')
-    print("---Logged to Texts")
-    BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
-    print("----Logged to BOM")
-    ViewportsDF.to_csv('ViewportsCSV')
-    print("-----Logged to ViewportsCSV")
-
+# LAUNCH THIS PROGRAM
 p = PyHelp()
 save_dataframe()

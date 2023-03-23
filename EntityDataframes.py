@@ -23,3 +23,27 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
 MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', ''])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
+
+def save_dataframe():
+    """Save the DataFrame objects to CSV files.
+
+    The function saves each of the four DataFrame objects to a separate CSV file.
+    The file names are hardcoded as 'LinesCSV', 'FittingsCSV', 'TextsCSV', and
+    'BillOfMaterialsCSV', respectively. The function logs a message to the console
+    after each file is saved to indicate which DataFrame object was saved.
+
+    Returns:
+    None
+    """
+    print("Saving CSVs")
+    LinesDF.to_csv('LinesCSV')
+    print("-Logged to Lines")
+    FittingsDF.to_csv('FittingsCSV')
+    FittingsDF.to_excel('FittingExcel.xlsx')
+    print("--Logged to Fittings")
+    TextsDF.to_csv('TextsCSV')
+    print("---Logged to Texts")
+    BillOfMaterialsDF.to_csv('BillOfMaterialsCSV')
+    print("----Logged to BOM")
+    ViewportsDF.to_csv('ViewportsCSV')
+    print("-----Logged to ViewportsCSV")
