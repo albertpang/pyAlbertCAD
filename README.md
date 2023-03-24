@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="![image](https://user-images.githubusercontent.com/97989034/227644430-44cc053e-2a35-40b3-a768-93f39f918bed.png)" />
+  <img src="" />
 </p># ⚙️ Albert's Python to AutoCAD Tool ⚙️
 **Introduction to Drafting/Reviewing/Designing Water and Sewer Mains**\
 _Contributor: Albert Pang_\
 _Project Start Date: 03/2023_\
 This uses Python ActiveX COM to control/review AutoCAD 2018-2023 Design Plans.
 
-
+![image](https://user-images.githubusercontent.com/97989034/227644430-44cc053e-2a35-40b3-a768-93f39f918bed.png)
 🏗️ **Capabililties Include:** 🏗️ \
   Finding Paperspace and ModelSpace coordinates of Viewports\
   Attaching Blocks to Viewports according to coordinates and Winding algorithms\
