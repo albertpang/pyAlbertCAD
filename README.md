@@ -1,9 +1,9 @@
 # ⚙️ Albert's Python to AutoCAD Tool ⚙️
 **Introduction to Drafting/Reviewing/Designing Water and Sewer Mains**\
-_This uses Python ActiveX COM to control/review AutoCAD 2018-2023 Design Plans._\
+_This uses Python ActiveX COM to control/review AutoCAD 2018-2023 Design Plans.\_
 
-__Contributor: Albert Pang_\
-_Project Start Date: 03/2023_\
+__Contributor: Albert Pang\_
+_Project Start Date: 03/2023\_
 \
 ![image](https://user-images.githubusercontent.com/97989034/227644430-44cc053e-2a35-40b3-a768-93f39f918bed.png) \
 🏗️ **Capabililties Include:** 🏗️ \
