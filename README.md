@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="" />
-</p># ⚙️ Albert's Python to AutoCAD Tool ⚙️
+# ⚙️ Albert's Python to AutoCAD Tool ⚙️
 **Introduction to Drafting/Reviewing/Designing Water and Sewer Mains**\
 _Contributor: Albert Pang_\
 _Project Start Date: 03/2023_\
