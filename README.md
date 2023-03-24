@@ -13,7 +13,8 @@ This uses Python ActiveX COM to control/review AutoCAD 2018-2023 Design Plans.
   Outputting Dataframes for each Block Type\
   
 🚧 **Currently in Progress** 🚧 \
- Associating Size of Lines based on MLeader Callouts
- Finalizing Bill of Material Quantites based on Sheets
- Checking Callouts with Radius of Fitting
+ Associating Size of Lines based on MLeader Callouts\
+ Finalizing Bill of Material Quantites based on Sheets\
+ Checking Callouts with Radius of Fitting\
+ Text String Formatting\
  
