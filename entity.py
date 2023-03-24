@@ -2,7 +2,7 @@ import pandas as pd
 import math
 import wait
 import win32com.client
-from ACAD_DataTypes import APoint
+from datatypes import APoint
 import time
 
 acad = win32com.client.Dispatch("AutoCAD.Application")

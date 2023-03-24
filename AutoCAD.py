@@ -306,7 +306,7 @@ class PyHelp():
     def __init__(self) -> None:
         self.create_albert_layer()
         self.create_layout_list()
-        # self.find_viewports()
+        self.find_viewports()
         self.find_papersheets()
         self.remove_albert_layer()
 
