@@ -75,10 +75,10 @@ class Sheet:
             # MLeader Object
             elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
                 le = LeaderLine(entity, self.__layout.name)
-                MLeadersDF.loc[len(MLeadersDF.index)] = [le.ID, le.sheet, le.startVertexCoordinateX, 
-                                                    le.startVertexCoordinateY, le.endVertexCoordinateX, 
-                                                    le.endVertexCoordinateY, "N/A", "N/A", "N/A"
-                                                    ]
+                MLeadersDF.loc[len(MLeadersDF.index)] = [le.ID, le.sheet, le.text, le.startVertexCoordinateX, 
+                                                            le.startVertexCoordinateY, le.endVertexCoordinateX, 
+                                                            le.endVertexCoordinateY, "N/A", "N/A", "N/A"
+                                                            ]
 
             # elif entityObjectName == 'AcDbViewport':
             #     pass
@@ -155,7 +155,6 @@ class Sheet:
 
         print("Associating Texts by Distance")        
         for sheet_name, group in TextsDF.groupby('Sheet'):
-            print(sheet_name)
             # Iterate over rows within the current sheet group
             for textIndex in group.index:
                 minDistance = 999

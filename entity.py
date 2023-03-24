@@ -236,6 +236,7 @@ class LeaderLine(Entity):
     def __init__(self, block, layout):
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.sheet = layout
+        self.text = wait.wait_for_attribute(block, "TextString")
         self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
         if self.leaderlineVertices == None:
             # Introduce Way to get coordinate of mleader
