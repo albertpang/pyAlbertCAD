@@ -11,7 +11,7 @@ import re
 
 # Importing Class Objects
 from entity import Fitting, Line, PolyLine, Text, Viewport, LeaderLine
-from dataframes import *
+from dataframes import * 
 
 acad = win32com.client.Dispatch("AutoCAD.Application")
 doc = acad.ActiveDocument
