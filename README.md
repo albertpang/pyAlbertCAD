@@ -3,7 +3,7 @@
 _This uses Python ActiveX COM to control/review AutoCAD 2018-2023 Design Plans.\_
 
 __Contributor: Albert Pang\_
-_Project Start Date: 03/2023\_
+__Project Start Date: 03/2023\__
 \
 ![image](https://user-images.githubusercontent.com/97989034/227644430-44cc053e-2a35-40b3-a768-93f39f918bed.png) \
 🏗️ **Capabililties Include:** 🏗️ \
