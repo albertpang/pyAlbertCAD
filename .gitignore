@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# DWG/CSVs
+CSV/
+UNIT TEST DWGS/
+
 # Distribution / packaging
 .Python
 build/

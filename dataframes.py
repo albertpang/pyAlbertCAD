@@ -1,4 +1,6 @@
+import os
 import pandas as pd
+import openpyxl
 
 LinesDF = pd.DataFrame(columns=['ID', 'Sheet', 'Layer', 'Start X', 
                                     'Start Y', 'End X', 'End Y', 'Length', 'Slope'])
@@ -38,6 +40,7 @@ def save_dataframe():
     Returns:
     None
     """
+    os.chdir(r'C:\Users\Albert.Pang\Documents\GitHub\PWD-pyAutoCAD\CSV')
     print("Saving CSVs")
     LinesDF.to_csv('LinesCSV')
     print("-Logged to Lines")
