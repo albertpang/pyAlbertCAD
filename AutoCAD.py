@@ -366,7 +366,6 @@ class PyHelp():
 
     def find_viewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
-        layouts = wait.wait_for_attribute(doc, "Layouts")
         doc.ActiveLayer = doc.Layers("AlbertToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
@@ -375,8 +374,14 @@ class PyHelp():
             if layout != "Model":
                 wait.set_attribute(doc, "ActiveLayout", wait.wait_for_method_return(doc, "Layouts", layout))
                 currentLayout = wait.wait_for_attribute(doc, "ActiveLayout")
+                validPaperSize = False
+                while not validPaperSize:
+                    try:
+                        self.layoutHeight, self.layoutWidth  = wait.wait_for_method_return(currentLayout, "GetPaperSize")
+                        validPaperSize = True
+                    except:
+                        continue
                 
-                self.layoutHeight, self.layoutWidth  = wait.wait_for_method_return(wait.wait_for_attribute(doc, "ActiveLayout"), "GetPaperSize")
                 wait.wait_for_method_return(doc, "SendCommand", "pspace z a  ")
 
                 entities = wait.wait_for_attribute(currentLayout, "Block")

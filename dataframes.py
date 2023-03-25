@@ -40,7 +40,7 @@ def save_dataframe():
     Returns:
     None
     """
-    os.chdir('\CSV')
+    os.chdir('CSV')
     print("Saving CSVs")
     LinesDF.to_csv('LinesCSV')
     print("-Logged to Lines")
