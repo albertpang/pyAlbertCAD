@@ -109,11 +109,11 @@ class Sheet:
         """Associates all MLeader Callouts with Appropriate fitting based on distance."""
         def find_fitting(searchString) -> tuple:
             """Calculate closest appropriate fitting based on Callout type"""
-            minDistance = 999999
+            minDistance = 999999999
             fittingIndex = 0
             for fittingIndex in FittingsDF.index:
-                if FittingsDF['Block Description'][fittingIndex].contains(searchString):
-                    x2, y2 = FittingsDF['Block X'][FittingsDF], FittingsDF['Block Y'][FittingsDF]
+                if searchString in FittingsDF['Block Description'][fittingIndex].lower():
+                    x2, y2 = FittingsDF['Block X'][fittingIndex], FittingsDF['Block Y'][fittingIndex]
                     distance = self.calc_distance(x1, y1, x2, y2)
                     if distance < minDistance:
                         minDistance = distance
