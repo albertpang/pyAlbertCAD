@@ -12,6 +12,7 @@ _Project Start Date: 03/2023_
   Attaching Blocks to Viewports according to coordinates and Winding algorithms\
   Attaching Mleaders to Lines based on coordinates\
   Associating Blocks to Lines based on collinearity\
+  Function and Method Wrappers to avoid COMType Errors\
   Outputting Dataframes for each Block Type
   
 🚧 **Currently in Progress** 🚧 \
