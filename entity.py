@@ -24,7 +24,7 @@ class Fitting(Entity):
         '''Initailize a Fitting Object based on Block Type'''
         super().__init__(block, layout)
         # Check if the blocks are Dynamic. This changes how properties are held
-        if block.IsDynamicBlock:
+        if wait.wait_for_attribute(block, "IsDynamicBlock"):
             blockDynamicProperties = wait.wait_for_method_return(block, "GetDynamicBlockProperties")
             # Isolate the block Fitting Type
             for prop in blockDynamicProperties:

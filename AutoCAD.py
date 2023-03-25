@@ -23,6 +23,7 @@ class Sheet:
     """
     def __init__(self, layout):
         self.layout = layout
+        self.layoutName = wait.wait_for_attribute(layout, "name")
 
     def find_blocks(self):
         """ Finds all the blocks in the current drawing and classifies them. 
@@ -41,7 +42,7 @@ class Sheet:
             # Line Object
             if entityObjectName == 'AcDbLine': # and entity.Layer == 'C-PR-WATER':
                 if entity.Length > 1:
-                    l = Line(entity, self.layout.name, False)
+                    l = Line(entity, self.layoutName, False)
                     LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
                                                         l.startX, l.startY, l.endX, 
                                                         l.endY, l.length, l.slope]
@@ -51,28 +52,28 @@ class Sheet:
                 if entity.Length > 1:
                     # If there are only two coordinates, convert Polyline into a line
                     if len(wait.wait_for_attribute(entity, "Coordinates")) == 4:
-                        l = Line(entity, self.layout.name, True)
+                        l = Line(entity, self.layoutName, True)
                         LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
                                                             l.startX, l.startY, l.endX, 
                                                             l.endY, l.length, l.slope]
                     # Otherwise, it is an authentic Polyline
                     else:
-                        pl = PolyLine(entity, self.layout.name, LinesDF)
+                        pl = PolyLine(entity, self.layoutName, LinesDF)
 
             elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
-                f = Fitting(entity, self.layout.name)
+                f = Fitting(entity, self.layoutName)
                 FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
                                                             f.locationX, f.locationY, "N/A", "N/A"]
                 
             # Text Items
             elif (entityObjectName == 'AcDbMText' or entity.ObjectName == 'AcDbText'):
-                t = Text(entity, self.layout.name)
+                t = Text(entity, self.layoutName)
                 TextsDF.loc[len(TextsDF.index)] = [t.ID, t.sheet, t.text, 
                                                     t.locationX, t.locationY, 
                                                     "N/A", "N/A"]
             # MLeader Object
             elif entityObjectName == 'AcDbMLeader':
-                le = LeaderLine(entity, self.layout.name)
+                le = LeaderLine(entity, self.layoutName)
                 MLeadersDF.loc[len(MLeadersDF.index)] = [le.ID, le.sheet, le.text, le.type, le.startVertexCoordinateX, 
                                                             le.startVertexCoordinateY, le.endVertexCoordinateX, 
                                                             le.endVertexCoordinateY, "N/A", "N/A", "N/A"
@@ -116,7 +117,7 @@ class Sheet:
                     x2, y2 = FittingsDF['Block X'][fittingIndex], FittingsDF['Block Y'][fittingIndex]
                     distance = self.calc_distance(x1, y1, x2, y2)
                     if distance < minDistance:
-                        minDistance = distance
+                        minDistance =  distance
                         minFitting = FittingsDF['Block Description'][fittingIndex]
             return minFitting, minDistance
         
@@ -135,21 +136,20 @@ class Sheet:
                 print(MLeadersDF['Text'][mleaderIndex])
                 if MLeadersDF['Text'][mleaderIndex] == '1':
                     fitting = find_fitting('valve')
-                    MLeadersDF['Fitting Description'] = fitting[0]
-                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                    MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '2':
                     fitting = find_fitting('hydr')
-                    MLeadersDF['Fitting Description'] = fitting[0]
-                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                    MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '3':
-                    fitting = find_fitting('valve')
-                    MLeadersDF['Fitting Description'] = fitting[0]
-                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                    fitting = find_fitting('sleeve')
+                    MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '4':
                     fitting = find_fitting('bend')
-                    MLeadersDF['Fitting Description'] = fitting[0]
-                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
-        
+                    MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
 
     def find_fitting_size(self):
         """Associates all fittings with a Line ID based on collinearity."""
