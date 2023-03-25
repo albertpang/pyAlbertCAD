@@ -106,13 +106,28 @@ class Sheet:
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
 
     def find_appropriate_callout(self):
+        """Associates all MLeader Callouts with Appropriate fitting based on distance."""
+        def find_fitting(searchString) -> tuple:
+            """Calculate closest appropriate fitting based on Callout type"""
+            minDistance = 999999
+            fittingIndex = 0
+            for fittingIndex in FittingsDF.index:
+                if FittingsDF['Block Description'][fittingIndex].contains(searchString):
+                    x2, y2 = FittingsDF['Block X'][FittingsDF], FittingsDF['Block Y'][FittingsDF]
+                    distance = self.calc_distance(x1, y1, x2, y2)
+                    if distance < minDistance:
+                        minDistance = distance
+                        minFitting = FittingsDF['Block Description'][fittingIndex]
+            return minFitting, minDistance
+        
+
         print("Associating Closest Callout to Fitting")
         mleaderIndex = 0
         MLeadersDF['Fitting Description'] = 'N/A'
         MLeadersDF['Distance to Appropriate Fitting'] = 'N/A'
 
         for mleaderIndex in MLeadersDF.index:
-            if MLeadersDF['Is MLeader'][mleaderIndex] == True:
+            if MLeadersDF['Is MLeader'][mleaderIndex] == False:
                 x1, y1 = self.calc_midpoint(MLeadersDF['Starting Vertex Coordinate X'][mleaderIndex], 
                                             MLeadersDF['Starting Vertex Coordinate Y'][mleaderIndex],
                                             MLeadersDF['Ending Vertex Coordinate Y'][mleaderIndex],
@@ -123,7 +138,7 @@ class Sheet:
                     MLeadersDF['Fitting Description'] = fitting[0]
                     MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '2':
-                    fitting = find_fitting('hydrant')
+                    fitting = find_fitting('hydr')
                     MLeadersDF['Fitting Description'] = fitting[0]
                     MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '3':
@@ -135,20 +150,6 @@ class Sheet:
                     MLeadersDF['Fitting Description'] = fitting[0]
                     MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
         
-        def find_fitting(searchString):
-            minDistance = 999999
-            fittingIndex = 0
-            for fittingIndex in FittingsDF.index:
-                if FittingsDF['Block Description'][fittingIndex].str.contains(searchString):
-                    x2, y2 = FittingsDF['Block X'][FittingsDF], FittingsDF['Block Y'][FittingsDF]
-                    distance = self.calc_distance(x1, y1, x2, y2)
-                    if distance < minDistance:
-                        minDistance = distance
-                        minFitting = FittingsDF['Block Description'][fittingIndex]
-            return minFitting, minDistance
-
-
-
 
     def find_fitting_size(self):
         """Associates all fittings with a Line ID based on collinearity."""
