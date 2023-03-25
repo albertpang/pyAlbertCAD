@@ -22,10 +22,9 @@ ViewportsDF = pd.DataFrame(columns=['ID', 'Sheet', 'Width', 'Height', 'Type', 'O
                                     'ModelSpace Coordinate Corner4 X', 'ModelSpace Coordinate Corner4 Y',
                                     ])
 
-MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Starting Vertex Coordinate X', 'Starting Vertex Coordinate Y',
+MLeadersDF = pd.DataFrame(columns=['ID', 'Sheet', 'Text', 'Is MLeader', 'Starting Vertex Coordinate X', 'Starting Vertex Coordinate Y',
                                    'Ending Vertex Coordinate X', 'Ending Vertex Coordinate Y', 'Matching Line ID',
-                                   'Matching Line Layer', 'Matching Line Length'
-                                   ])
+                                   'Matching Line Layer', 'Matching Line Length'])
 
 BillOfMaterialsDF = pd.DataFrame(columns=['Sheet', 'Associated Text String'])
 

@@ -162,10 +162,10 @@ class Viewport(Entity):
 
 class Line(Entity):
     def __init__(self, block, layout, isPolyline):
-        self.ID = block.ObjectID
+        self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.sheet = layout
-        self.layer = block.Layer
-        self.length = block.length
+        self.layer = wait.wait_for_attribute(block, "Layer")
+        self.length = wait.wait_for_attribute(block, "length")
 
         # Get PolyLine Coordinates of a Single segment
         if isPolyline:
@@ -205,7 +205,7 @@ class PolyLine(Line):
 
         self.block = block
         self.sheet = layout
-        self.layer = block.Layer
+        self.layer = wait.wait_for_attribute(block, "Layer")
         self.DF = DF
         
 
@@ -236,15 +236,17 @@ class LeaderLine(Entity):
     def __init__(self, block, layout):
         self.ID = wait.wait_for_attribute(block, "ObjectID")
         self.sheet = layout
-        self.text = wait.wait_for_attribute(block, "TextString")
+        
         self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
         if self.leaderlineVertices == None:
             # Introduce Way to get coordinate of mleader
-            self.startVertexCoordinateX = 0 
-            self.startVertexCoordinateY = 0
-            self.endVertexCoordinateX = 'N/A'
-            self.endVertexCoordinateY = 'N/A'
+            self.text = wait.wait_for_attribute(block, "TextString").strip()
+            boundingCoordinates = wait.wait_for_method_return(block, "GetBoundingBox")
+            self.startVertexCoordinateX, self.startVertexCoordinateY = boundingCoordinates[0][:2]
+            self.endVertexCoordinateX, self.endVertexCoordinateY  = boundingCoordinates[1][:2]
+            self.type = False
         else:
+            self.text = wait.wait_for_attribute(block, "TextString")
             self.break_leader_vertices()    
 
 
@@ -258,4 +260,5 @@ class LeaderLine(Entity):
 
         self.startVertexCoordinateX, self.startVertexCoordinateY = vertexList[0]
         self.endVertexCoordinateX, self.endVertexCoordinateY = vertexList[-1]
+        self.type = True
         

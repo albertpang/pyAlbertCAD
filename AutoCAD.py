@@ -50,7 +50,7 @@ class Sheet:
             elif entityObjectName == 'AcDbPolyline': # and entity.Layer == 'C-PR-WATER':
                 if entity.Length > 1:
                     # If there are only two coordinates, convert Polyline into a line
-                    if len(entity.Coordinates) == 4:
+                    if len(wait.wait_for_attribute(entity, "Coordinates")) == 4:
                         l = Line(entity, self.__layout.name, True)
                         LinesDF.loc[len(LinesDF.index)] = [l.ID, l.sheet, l.layer, 
                                                             l.startX, l.startY, l.endX, 
@@ -59,7 +59,7 @@ class Sheet:
                     else:
                         pl = PolyLine(entity, self.__layout.name, LinesDF)
 
-            if entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
+            elif entityObjectName == 'AcDbBlockReference': # and entity.Name.startswith("WATER"):
                 f = Fitting(entity, self.__layout.name)
                 FittingsDF.loc[len(FittingsDF.index)] = [f.ID, f.sheet, f.BlockName, 
                                                             f.locationX, f.locationY, "N/A", "N/A"]
@@ -72,12 +72,14 @@ class Sheet:
                                                     "N/A", "N/A"
                                                     ]
             # MLeader Object
-            elif entityObjectName == 'AcDbMLeader': # and "DUCTILE" in entity.textString:
+            elif entityObjectName == 'AcDbMLeader':
                 le = LeaderLine(entity, self.__layout.name)
                 MLeadersDF.loc[len(MLeadersDF.index)] = [le.ID, le.sheet, le.text, le.startVertexCoordinateX, 
                                                             le.startVertexCoordinateY, le.endVertexCoordinateX, 
-                                                            le.endVertexCoordinateY, "N/A", "N/A", "N/A"
+                                                            le.endVertexCoordinateY, le.type, "N/A", "N/A", "N/A"
                                                             ]
+            elif entityObjectName == "AcDbMText":
+                print(wait.wait_for_attribute(entity, "TextString"))
 
             # elif entityObjectName == 'AcDbViewport':
             #     pass
@@ -96,10 +98,56 @@ class Sheet:
         collinearity = x1*(y3-y2)+x3*(y2-y1)+x2*(y1-y3)
         return (abs(collinearity) < 0.005)
     
+    def calc_midpoint(self, x1, y1, x2, y2) -> float:
+        """Calculates the midpoint between two points in a 2D space."""
+        return ((x1 + x2) / 2, (y1 + y2) / 2)
         
     def calc_distance(self, x1, y1, x2, y2) -> float:
         """Calculates the Euclidean distance between two points in a 2D space."""
         return ((x1 - x2) **2 + (y1 - y2) **2) ** 0.5
+
+    def find_appropriate_callout(self):
+        print("Associating Closest Callout to Fitting")
+        mleaderIndex = 0
+        FittingsDF['Fitting Description'] = 'N/A'
+        FittingsDF['Distance to Appropriate Fitting'] = 'N/A'
+
+        for mleaderIndex in MLeadersDF.index:
+            if MLeadersDF['Is MLeader'][mleaderIndex]:
+                x1, y1 = self.calc_midpoint(MLeadersDF['Starting Vertex Coordinate X'][mleaderIndex], 
+                                            MLeadersDF['Starting Vertex Coordinate Y'][mleaderIndex],
+                                            MLeadersDF['Ending Vertex Coordinate Y'][mleaderIndex],
+                                            MLeadersDF['Ending Vertex Coordinate Y'][mleaderIndex])
+                if MLeadersDF['Text'][mleaderIndex] == 1:
+                    fitting = find_fitting('valve')
+                    MLeadersDF['Fitting Description'] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                elif MLeadersDF['Text'][mleaderIndex] == 2:
+                    fitting = find_fitting('hydrant')
+                    MLeadersDF['Fitting Description'] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                elif MLeadersDF['Text'][mleaderIndex] == 3:
+                    fitting = find_fitting('valve')
+                    MLeadersDF['Fitting Description'] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+                elif MLeadersDF['Text'][mleaderIndex] == 4:
+                    fitting = find_fitting('bend')
+                    MLeadersDF['Fitting Description'] = fitting[0]
+                    MLeadersDF['Distance to Appropriate Fitting'] = fitting[1]
+        
+        def find_fitting(searchString):
+            minDistance = 999999
+            fittingIndex = 0
+            for fittingIndex in FittingsDF.index:
+                if FittingsDF['Block Description'][fittingIndex].str.contains(searchString):
+                    x2, y2 = FittingsDF['Block X'][FittingsDF], FittingsDF['Block Y'][FittingsDF]
+                    distance = self.calc_distance(x1, y1, x2, y2)
+                    if distance < minDistance:
+                        minDistance = distance
+                        minFitting = FittingsDF['Block Description'][fittingIndex]
+            return minFitting, minDistance
+
+
 
 
     def find_fitting_size(self):
@@ -306,7 +354,7 @@ class PyHelp():
     def __init__(self) -> None:
         self.create_albert_layer()
         self.create_layout_list()
-        self.find_viewports()
+        # self.find_viewports()
         self.find_papersheets()
         self.remove_albert_layer()
 
@@ -445,6 +493,7 @@ class PyHelp():
                     s = Sheet(currentLayout)
                     s.find_blocks()
                     s.find_fitting_size()
+                    s.find_appropriate_callout()
                     s.find_line_size()
                     inModelSpace = False
                     continue
