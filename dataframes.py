@@ -40,7 +40,7 @@ def save_dataframe():
     Returns:
     None
     """
-    os.chdir(r'C:\Users\Albert.Pang\Documents\GitHub\PWD-pyAutoCAD\CSV')
+    os.chdir('\CSV')
     print("Saving CSVs")
     LinesDF.to_csv('LinesCSV')
     print("-Logged to Lines")
