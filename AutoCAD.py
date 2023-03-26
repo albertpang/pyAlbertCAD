@@ -113,7 +113,7 @@ class Sheet:
             minDistance = 999999999
             fittingIndex = 0
             for fittingIndex in FittingsDF.index:
-                if searchString in FittingsDF['Block Description'][fittingIndex].lower():
+                if re.search(searchString, FittingsDF['Block Description'][fittingIndex].lower()):
                     x2, y2 = FittingsDF['Block X'][fittingIndex], FittingsDF['Block Y'][fittingIndex]
                     distance = self.calc_distance(x1, y1, x2, y2)
                     if distance < minDistance:
@@ -131,15 +131,15 @@ class Sheet:
             if MLeadersDF['Is MLeader'][mleaderIndex] == False:
                 x1, y1 = self.calc_midpoint(MLeadersDF['Starting Vertex Coordinate X'][mleaderIndex], 
                                             MLeadersDF['Starting Vertex Coordinate Y'][mleaderIndex],
-                                            MLeadersDF['Ending Vertex Coordinate Y'][mleaderIndex],
+                                            MLeadersDF['Ending Vertex Coordinate X'][mleaderIndex],
                                             MLeadersDF['Ending Vertex Coordinate Y'][mleaderIndex])
-                print(MLeadersDF['Text'][mleaderIndex])
+                
                 if MLeadersDF['Text'][mleaderIndex] == '1':
-                    fitting = find_fitting('valve')
+                    fitting = find_fitting('valve|anchor')
                     MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
                     MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '2':
-                    fitting = find_fitting('hydr')
+                    fitting = find_fitting('fire hydrant')
                     MLeadersDF['Fitting Description'][mleaderIndex] = fitting[0]
                     MLeadersDF['Distance to Appropriate Fitting'][mleaderIndex] = fitting[1]
                 elif MLeadersDF['Text'][mleaderIndex] == '3':

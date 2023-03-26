@@ -238,7 +238,7 @@ class LeaderLine(Entity):
         self.sheet = layout
         
         self.leaderlineVertices = wait.wait_for_method_return(block, "GetLeaderLineVertices", 0)
-        if self.leaderlineVertices == None:
+        if self.leaderlineVertices == None or len(wait.wait_for_attribute(block, "TextString").strip()) == 1:
             # Introduce Way to get coordinate of mleader
             self.text = wait.wait_for_attribute(block, "TextString").strip()
             boundingCoordinates = wait.wait_for_method_return(block, "GetBoundingBox")
