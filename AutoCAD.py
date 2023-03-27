@@ -353,11 +353,11 @@ class Sheet:
 
 class PyHelp():
     def __init__(self) -> None:
-        self.create_albert_layer()
+        self.create_markup_layer()
         self.create_layout_list()
         # self.find_viewports()
         self.find_papersheets()
-        self.remove_albert_layer()
+        self.remove_markup_layer()
 
     def create_layout_list(self):
         '''Identifies all Layouts in Document and Sorts by Numerical Value'''
@@ -367,20 +367,20 @@ class PyHelp():
             self.layoutList.append(layout.Name)
         self.layoutList.sort(key=lambda x:x[2:])
 
-    def create_albert_layer(self):
+    def create_markup_layer(self):
         '''Creates the layer property to use for all required PyHelp methods'''
-        coordinateLayer = doc.layers.Add("AlbertToolLayer")
+        coordinateLayer = doc.layers.Add("markupToolLayer")
         coordinateLayer.LayerOn
         coordinateLayer.color = 40
 
 
-    def remove_albert_layer(self):
-        '''Removes all items that use AlbertLayer in the document'''
-        print("Removing Albert's Calculation Linework")
+    def remove_markup_layer(self):
+        '''Removes all items that use markupLayer in the document'''
+        print("Removing markup's Calculation Linework")
         for index, row in LinesDF.iterrows():
-        # Check if the layer of the current row is 'AlbertToolLayer'
+        # Check if the layer of the current row is 'markupToolLayer'
             try:
-                if row['Layer'] == 'AlbertToolLayer':
+                if row['Layer'] == 'markupToolLayer':
                     line = acad.ActiveDocument.ObjectIDtoObject(int(row['ID']))
                     line.Delete()
             except:
@@ -415,7 +415,7 @@ class PyHelp():
 
     def find_viewports(self):
         # If this is the first sheet, AutoCAD needs to go slow
-        doc.ActiveLayer = doc.Layers("AlbertToolLayer")
+        doc.ActiveLayer = doc.Layers("markupToolLayer")
         # Loop over all layouts and print their names
         print("Finding Viewports")
 
